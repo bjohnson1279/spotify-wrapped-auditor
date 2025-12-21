@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/
+*.js
+!stats.js
+brain/
+my_spotify_data.zip
+.DS_Store
+scripts/check_fullbloom.ts
