@@ -7,7 +7,7 @@ const CONFIG = {
     DATA_DIR: path.join(process.cwd(), 'data'),
 };
 
-const TARGETS = [
+const TARGETS: any[] = [
 ];
 
 const loadRawEvents = (): SpotifyAudioEvent[] => {
