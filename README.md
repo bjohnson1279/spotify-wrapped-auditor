@@ -1,5 +1,7 @@
 # Spotify Wrapped Auditor
 
+Disclaimer: AI generated text
+
 A high-precision tool to replicate and audit your Spotify Wrapped statistics from raw JSON export data.
 
 ## Features
