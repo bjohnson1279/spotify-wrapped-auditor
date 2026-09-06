@@ -44,8 +44,8 @@ const runAudit = () => {
     console.log(`Filtered down to ${filtered.length} valid plays.`);
 
     // 3. Aggregate
-    const trackStats: Record<string, TrackStats> = {};
-    const artistStats: Record<string, TrackStats> = {};
+    const trackStats: Record<string, TrackStats> = Object.create(null);
+    const artistStats: Record<string, TrackStats> = Object.create(null);
     let musicMs = 0;
     let podcastMs = 0;
 
