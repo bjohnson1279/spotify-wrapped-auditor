@@ -13,8 +13,12 @@ const runAudit = () => {
     const allTime = args.includes('--all-time');
     const topNArg = args.find(a => a.startsWith('--top='))?.split('=')[1];
 
+    // Security: Validate numeric input for CLI arguments
     const year = yearArg ? parseInt(yearArg) : 2025;
+    if (isNaN(year)) throw new Error('Invalid year argument');
+
     const TOP_N = topNArg ? parseInt(topNArg) : 200;
+    if (isNaN(TOP_N) || TOP_N <= 0) throw new Error('Invalid top argument');
 
     console.log(`\n--- Starting Spotify Audit ---`);
     if (allTime) console.log(`Mode: All-Time`);
@@ -44,8 +48,9 @@ const runAudit = () => {
     console.log(`Filtered down to ${filtered.length} valid plays.`);
 
     // 3. Aggregate
-    const trackStats: Record<string, TrackStats> = {};
-    const artistStats: Record<string, TrackStats> = {};
+    // Security: Use Object.create(null) to prevent Prototype Pollution from untrusted track/artist names
+    const trackStats: Record<string, TrackStats> = Object.create(null);
+    const artistStats: Record<string, TrackStats> = Object.create(null);
     let musicMs = 0;
     let podcastMs = 0;
 
