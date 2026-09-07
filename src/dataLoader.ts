@@ -15,11 +15,17 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
         const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-        rawEvents.push(...JSON.parse(raw));
+        // ⚡ Bolt Optimization: Avoid spread operator `...` on potentially massive arrays
+        // which can throw "Maximum call stack size exceeded" on hundreds of thousands of events.
+        for (const event of JSON.parse(raw)) {
+            rawEvents.push(event);
+        }
     });
 
     // Sort by timestamp
-    rawEvents.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+    // ⚡ Bolt Optimization: Compare ISO 8601 strings directly instead of parsing to Date objects.
+    // Lexicographical string comparison is significantly faster and yields identical ordering.
+    rawEvents.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
 
     // --- DEDUPLICATION LOGIC ---
     let deduped: SpotifyAudioEvent[] = [];
