@@ -8,9 +8,16 @@ export interface AuditConfig {
 }
 
 export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditConfig): SpotifyAudioEvent[] => {
+    // ⚡ Bolt Optimization: Pre-calculate ISO strings to avoid new Date() in the inner loop
+    const startDateStr = config.START_DATE.toISOString();
+    const endDateStr = config.END_DATE.toISOString();
+    const endMonth = config.END_DATE.getUTCMonth();
+    const endDate = config.END_DATE.getUTCDate();
+
     return deduped.filter((e, index) => {
-        const ts = new Date(e.ts);
-        if (ts < config.START_DATE || ts > config.END_DATE) return false;
+        const tsStr = e.ts;
+        // ⚡ Bolt Optimization: Direct string comparison for ISO 8601 timestamps
+        if (tsStr < startDateStr || tsStr > endDateStr) return false;
         if (e.ms_played < config.MIN_MS_PLAYED) return false;
 
         // Handle unknown reason for short plays (likely glitches)
@@ -21,6 +28,13 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         const track = e.master_metadata_track_name || 'Unknown Track';
         const currName = `${track} - ${artist} `;
 
+        // Lazy initialization for parsing ms timestamp
+        let tsMs = 0;
+        const getTsMs = () => {
+            if (tsMs === 0) tsMs = Date.parse(tsStr); // ⚡ Bolt Optimization: Date.parse is faster than new Date().getTime()
+            return tsMs;
+        };
+
         // RULE 1: UNIVERSAL GLITCH / SPLIT PLAY (Context-Aware)
         let nextSameTrack: SpotifyAudioEvent | null = null;
         let gapToNextSame = Infinity;
@@ -29,7 +43,7 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             const candidateName = `${candidate.master_metadata_track_name} - ${candidate.master_metadata_album_artist_name} `;
             if (candidateName === currName) {
                 nextSameTrack = candidate;
-                gapToNextSame = Math.abs(new Date(candidate.ts).getTime() - ts.getTime());
+                gapToNextSame = Math.abs(Date.parse(candidate.ts) - getTsMs());
                 break;
             }
         }
@@ -43,8 +57,11 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         }
 
         // RULE 2: BOUNDARY LOGOUT (IPv4 Final Day)
-        if (e.reason_end === 'logout' && isIPv4 && ts.getUTCMonth() === config.END_DATE.getUTCMonth() && ts.getUTCDate() === config.END_DATE.getUTCDate()) {
-            return false;
+        if (e.reason_end === 'logout' && isIPv4) {
+            // ⚡ Bolt Optimization: Fast string substring checks for month/day
+            const tsMonth = parseInt(tsStr.substring(5, 7), 10) - 1;
+            const tsDate = parseInt(tsStr.substring(8, 10), 10);
+            if (tsMonth === endMonth && tsDate === endDate) return false;
         }
 
         // RULE 3: REDUNDANT SHORT PLAY (IPv4 Contextual)
@@ -54,8 +71,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             const prevName = prevTrack ? `${prevTrack.master_metadata_track_name} - ${prevTrack.master_metadata_album_artist_name} ` : null;
             const nextName = nextTrack ? `${nextTrack.master_metadata_track_name} - ${nextTrack.master_metadata_album_artist_name} ` : null;
 
-            const prevGap = prevTrack ? Math.abs(ts.getTime() - new Date(prevTrack.ts).getTime()) : Infinity;
-            const nextGap = nextTrack ? Math.abs(new Date(nextTrack.ts).getTime() - ts.getTime()) : Infinity;
+            const prevGap = prevTrack ? Math.abs(getTsMs() - Date.parse(prevTrack.ts)) : Infinity;
+            const nextGap = nextTrack ? Math.abs(Date.parse(nextTrack.ts) - getTsMs()) : Infinity;
 
             // 3.1: Consecutive Redundancy
             if (e.reason_end !== 'trackdone' && e.master_metadata_album_artist_name !== '311') {
@@ -71,7 +88,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             if (prevName && prevName === nextName && prevGap < 600000 && e.reason_end !== 'trackdone') return false;
 
             // 3.3: Late Year Logout Filter
-            if (ts.getUTCMonth() >= 7 && e.master_metadata_album_artist_name !== '311') {
+            const tsMonth = parseInt(tsStr.substring(5, 7), 10) - 1;
+            if (tsMonth >= 7 && e.master_metadata_album_artist_name !== '311') {
                 if (e.reason_end === 'logout' || (e.reason_end === 'endplay' && e.skipped)) {
                     if (e.ms_played < 50000) return false;
                 }
@@ -86,9 +104,14 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 };
 
 export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: AuditConfig): SpotifyAudioEvent[] => {
+    // ⚡ Bolt Optimization: Pre-calculate ISO strings to avoid new Date() in the inner loop
+    const startDateStr = config.START_DATE.toISOString();
+    const endDateStr = config.END_DATE.toISOString();
+
     return deduped.filter(e => {
-        const ts = new Date(e.ts);
-        if (ts < config.START_DATE || ts > config.END_DATE) return false;
+        const tsStr = e.ts;
+        // ⚡ Bolt Optimization: Direct string comparison for ISO 8601 timestamps
+        if (tsStr < startDateStr || tsStr > endDateStr) return false;
         if (e.ms_played < config.MIN_MS_PLAYED) return false;
         if (e.audiobook_title) return false;
         return true;
