@@ -14,11 +14,24 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
-        const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-        // ⚡ Bolt Optimization: Avoid spread operator `...` on potentially massive arrays
-        // which can throw "Maximum call stack size exceeded" on hundreds of thousands of events.
-        for (const event of JSON.parse(raw)) {
-            rawEvents.push(event);
+        try {
+            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+            const parsed = JSON.parse(raw);
+
+            // 🛡️ Sentinel: Validate that parsed data is an array to prevent crashes or unexpected iteration
+            if (!Array.isArray(parsed)) {
+                console.error(`Warning: Skipping ${file} as it does not contain a valid JSON array.`);
+                return;
+            }
+
+            // ⚡ Bolt Optimization: Avoid spread operator `...` on potentially massive arrays
+            // which can throw "Maximum call stack size exceeded" on hundreds of thousands of events.
+            for (const event of parsed) {
+                rawEvents.push(event);
+            }
+        } catch (error) {
+            console.error(`Error processing file ${file}. It has been skipped.`);
+            // 🛡️ Sentinel: Do not leak stack trace or internal file paths
         }
     });
 
