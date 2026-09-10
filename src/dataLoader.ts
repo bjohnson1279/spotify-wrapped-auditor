@@ -14,9 +14,19 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
-        const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-        // Prevent call stack size exceeded errors by using concat
-        rawEvents = rawEvents.concat(JSON.parse(raw));
+        try {
+            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+            // Prevent call stack size exceeded errors by using concat
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                console.warn(`[WARNING] Invalid data format in ${file}: Expected an array. Skipping.`);
+                return;
+            }
+            rawEvents = rawEvents.concat(parsed);
+        } catch (error) {
+            console.error(`[ERROR] Failed to read or parse file ${file}. Skipping to prevent disruption.`);
+            // Do not leak stack trace
+        }
     });
 
     // Sort by timestamp
