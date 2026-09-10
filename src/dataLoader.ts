@@ -18,20 +18,24 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
             const parsed = JSON.parse(raw);
 
-            // 🛡️ Sentinel: Validate that parsed data is an array to prevent crashes or unexpected iteration
+            // Security: Validate that parsed data is an array
             if (!Array.isArray(parsed)) {
-                console.error(`Warning: Skipping ${file} as it does not contain a valid JSON array.`);
+                console.error(`[Warning]: Skipping file ${file} - Invalid data format (expected JSON array)`);
                 return;
             }
 
             // ⚡ Bolt Optimization: Avoid spread operator `...` on potentially massive arrays
             // which can throw "Maximum call stack size exceeded" on hundreds of thousands of events.
             for (const event of parsed) {
-                rawEvents.push(event);
+                // Security: Basic input validation for untrusted external JSON data
+                if (!event || typeof event !== 'object') continue;
+                if (typeof event.ts !== 'string' || typeof event.ms_played !== 'number') continue;
+
+                rawEvents.push(event as SpotifyAudioEvent);
             }
-        } catch (error) {
-            console.error(`Error processing file ${file}. It has been skipped.`);
-            // 🛡️ Sentinel: Do not leak stack trace or internal file paths
+        } catch (error: any) {
+            // Security: Prevent app crash and avoid stack trace leakage on malformed JSON
+            console.error(`[Error]: Failed to parse or read data file ${file} - ${error.message || 'Unknown error'}`);
         }
     });
 
@@ -45,9 +49,7 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let prev: { e: SpotifyAudioEvent, startTime: number, endTime: number } | null = null;
 
     for (const e of rawEvents) {
-        // ⚡ Bolt Optimization: Use Date.parse(ts) instead of new Date(ts).getTime()
-        // Date.parse is significantly faster than allocating new Date objects in a loop.
-        const endTime = Date.parse(e.ts);
+        const endTime = new Date(e.ts).getTime();
         const startTime = endTime - e.ms_played;
         const curr = { e, startTime, endTime };
 

@@ -3,7 +3,7 @@
 **Learning:** Even internal data processing tools are susceptible to prototype pollution if external data is used directly as object keys without sanitization or safe object creation.
 **Prevention:** Use `Object.create(null)` or `Map` when creating objects intended to be used purely as key-value stores or dictionaries with untrusted keys.
 
-## 2025-02-14 - Information Disclosure via Unhandled Exceptions
-**Vulnerability:** The application was missing top-level error boundaries and `try...catch` blocks around file I/O operations (like reading user-provided raw Spotify exports). If a file was missing, malformed, or invalid JSON, it would crash the Node.js process and leak internal server file paths and execution context via stack traces to standard error.
-**Learning:** Utilities that parse files or complex external structures should gracefully handle parsing/I/O errors and validate expected shapes (e.g., checking `Array.isArray()`) rather than assuming data structure.
-**Prevention:** Wrap top-level execution calls and file I/O (like `JSON.parse` of raw exports) in `try...catch` blocks to gracefully handle errors, validate structures, and prevent sensitive stack trace leaks.
+## 2025-10-24 - Uncaught Exceptions and Stack Trace Leaks on Malformed JSON
+**Vulnerability:** Reading and parsing untrusted Spotify JSON exports directly without `try/catch` and structure validation. If a user provided a malformed JSON file or a non-array JSON structure, the application would crash and leak a full stack trace to the console.
+**Learning:** File system read operations and JSON parsers must always be wrapped in `try/catch`. The type of the parsed data cannot be assumed to match the expected interface without validation.
+**Prevention:** Wrap `JSON.parse` and file system reads in `try/catch`. Explicitly check data structures (e.g., `Array.isArray(parsed)`) and expected object properties before processing untrusted external files. Catch top-level errors and log secure messages without stack traces.
