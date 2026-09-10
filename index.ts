@@ -89,8 +89,8 @@ const runAudit = () => {
 
 try {
     runAudit();
-} catch (error) {
-    console.error('An error occurred during the audit process.');
-    // 🛡️ Sentinel: Do not leak stack trace
+} catch (error: any) {
+    // Security: Avoid exposing full stack trace in production runs
+    console.error(`\n[Error]: ${error.message || 'An unexpected error occurred'}`);
     process.exit(1);
 }
