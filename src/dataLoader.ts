@@ -14,34 +14,14 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
-        try {
-            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-            const parsed = JSON.parse(raw);
-
-            // Security: Validate that parsed data is an array
-            if (!Array.isArray(parsed)) {
-                console.error(`[Warning]: Skipping file ${file} - Invalid data format (expected JSON array)`);
-                return;
-            }
-
-            // ⚡ Bolt Optimization: Avoid spread operator `...` on potentially massive arrays
-            // which can throw "Maximum call stack size exceeded" on hundreds of thousands of events.
-            for (const event of parsed) {
-                // Security: Basic input validation for untrusted external JSON data
-                if (!event || typeof event !== 'object') continue;
-                if (typeof event.ts !== 'string' || typeof event.ms_played !== 'number') continue;
-
-                rawEvents.push(event as SpotifyAudioEvent);
-            }
-        } catch (error: any) {
-            // Security: Prevent app crash and avoid stack trace leakage on malformed JSON
-            console.error(`[Error]: Failed to parse or read data file ${file} - ${error.message || 'Unknown error'}`);
-        }
+        const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+        // Prevent call stack size exceeded errors by using concat
+        rawEvents = rawEvents.concat(JSON.parse(raw));
     });
 
     // Sort by timestamp
-    // ⚡ Bolt Optimization: Compare ISO 8601 strings directly instead of parsing to Date objects.
-    // Lexicographical string comparison is significantly faster and yields identical ordering.
+    // ⚡ Bolt: Fast string comparison instead of expensive Date parsing
+    // ISO 8601 strings sort lexicographically the same as chronological order
     rawEvents.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
 
     // --- DEDUPLICATION LOGIC ---
