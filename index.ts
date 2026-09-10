@@ -13,14 +13,13 @@ const runAudit = () => {
     const allTime = args.includes('--all-time');
     const topNArg = args.find(a => a.startsWith('--top='))?.split('=')[1];
 
-    // Security: Validate numeric input for CLI arguments
     const year = yearArg ? parseInt(yearArg) : 2025;
-    if (isNaN(year)) throw new Error('Invalid year argument');
-
     const TOP_N = topNArg ? parseInt(topNArg) : 200;
-    if (isNaN(TOP_N) || TOP_N <= 0) throw new Error('Invalid top argument');
 
     console.log(`\n--- Starting Spotify Audit ---`);
+    if (!process.env.HOME_IP) {
+        console.warn(`[WARNING] HOME_IP environment variable is not set. IPv4-specific filtering logic will be disabled.`);
+    }
     if (allTime) console.log(`Mode: All-Time`);
     else console.log(`Mode: Year ${year}`);
 
@@ -48,7 +47,6 @@ const runAudit = () => {
     console.log(`Filtered down to ${filtered.length} valid plays.`);
 
     // 3. Aggregate
-    // Security: Use Object.create(null) to prevent Prototype Pollution from untrusted track/artist names
     const trackStats: Record<string, TrackStats> = Object.create(null);
     const artistStats: Record<string, TrackStats> = Object.create(null);
     let musicMs = 0;
@@ -87,10 +85,4 @@ const runAudit = () => {
     });
 };
 
-try {
-    runAudit();
-} catch (error: any) {
-    // Security: Avoid exposing full stack trace in production runs
-    console.error(`\n[Error]: ${error.message || 'An unexpected error occurred'}`);
-    process.exit(1);
-}
+runAudit();
