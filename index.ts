@@ -87,4 +87,10 @@ const runAudit = () => {
     });
 };
 
-runAudit();
+try {
+    runAudit();
+} catch (error) {
+    console.error('An error occurred during the audit process.');
+    // 🛡️ Sentinel: Do not leak stack trace
+    process.exit(1);
+}
