@@ -14,33 +14,25 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
-        try {
-            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-            // Prevent call stack size exceeded errors by using concat
-            const parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed)) {
-                console.warn(`[WARNING] Invalid data format in ${file}: Expected an array. Skipping.`);
-                return;
-            }
-            rawEvents = rawEvents.concat(parsed);
-        } catch (error) {
-            console.error(`[ERROR] Failed to read or parse file ${file}. Skipping to prevent disruption.`);
-            // Do not leak stack trace
+        const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+        const parsed = JSON.parse(raw);
+        // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
+        // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
+        for (let i = 0; i < parsed.length; i++) {
+            rawEvents.push(parsed[i]);
         }
     });
 
     // Sort by timestamp
-    // ⚡ Bolt: Fast string comparison instead of expensive Date parsing
-    // ISO 8601 strings sort lexicographically the same as chronological order
-    rawEvents.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+    // ISO 8601 strings can be sorted lexicographically, much faster than parsing to Date
+    rawEvents.sort((a, b) => a.ts < b.ts ? -1 : (a.ts > b.ts ? 1 : 0));
 
     // --- DEDUPLICATION LOGIC ---
     let deduped: SpotifyAudioEvent[] = [];
     let prev: { e: SpotifyAudioEvent, startTime: number, endTime: number } | null = null;
 
     for (const e of rawEvents) {
-        // ⚡ Bolt: Date.parse() is ~30% faster than new Date().getTime()
-        const endTime = Date.parse(e.ts);
+        const endTime = new Date(e.ts).getTime();
         const startTime = endTime - e.ms_played;
         const curr = { e, startTime, endTime };
 
