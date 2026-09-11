@@ -17,6 +17,9 @@ const runAudit = () => {
     const TOP_N = topNArg ? parseInt(topNArg) : 200;
 
     console.log(`\n--- Starting Spotify Audit ---`);
+    if (!process.env.HOME_IP) {
+        console.warn(`[WARNING] HOME_IP environment variable is not set. IPv4-specific filtering logic will be disabled.`);
+    }
     if (allTime) console.log(`Mode: All-Time`);
     else console.log(`Mode: Year ${year}`);
 
