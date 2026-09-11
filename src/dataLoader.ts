@@ -32,7 +32,8 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let prev: { e: SpotifyAudioEvent, startTime: number, endTime: number } | null = null;
 
     for (const e of rawEvents) {
-        const endTime = new Date(e.ts).getTime();
+        // ⚡ Bolt: Use Date.parse() instead of new Date().getTime() to avoid object instantiation overhead in large loops
+        const endTime = Date.parse(e.ts);
         const startTime = endTime - e.ms_played;
         const curr = { e, startTime, endTime };
 
