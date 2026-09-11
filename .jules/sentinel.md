@@ -13,6 +13,11 @@
 **Learning:** Hardcoding sensitive configuration constants like Home IPs into source code risks exposing user identities, especially when open-sourcing or sharing the project.
 **Prevention:** Externalize sensitive information to environment variables (e.g., `process.env.HOME_IP`).
 
+## 2026-09-11 - Unhandled JSON parsing and Lack of Validation Fixed
+**Vulnerability:** The `src/dataLoader.ts` directly parsed JSON read from a file using `JSON.parse` and assumed the returned type was an Array for concatenation. If the parsed string was invalid JSON, it would throw an unhandled exception, leaking stack traces. If it was valid JSON but an Object instead of an Array, the `length` property check and loop could cause unexpected behavior.
+**Learning:** Never assume the output of `JSON.parse` is of a specific format. Direct unhandled JSON parsing without validation or error handling can lead to stack trace leakage and application crashes.
+**Prevention:** Wrap file reading and JSON parsing in `try...catch` blocks. Validate that the parsed output structure matches what the program expects, e.g., checking `Array.isArray(parsed)`.
+
 ## 2025-01-20 - Unhandled JSON parsing and Lack of Validation
 **Vulnerability:** The dataLoader.ts directly parsed JSON read from a file using `JSON.parse` and assumed the returned type was an Array for concatenation. If the parsed string is invalid JSON it would throw an unhandled exception, leaking stack traces. If it is valid JSON but an Object instead of an Array, `concat` could cause unpredictable behavior or throw later in the application.
 **Learning:** Never assume the output of `JSON.parse` is of a specific format. Direct unhandled JSON parsing without validation or error handling can lead to stack trace leakage and application crash.
