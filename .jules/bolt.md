@@ -1,5 +1,3 @@
-## 2025-01-20 - String vs Date Parsing in Sorting
-**Learning:** Instantiating `new Date(a.ts)` on every iteration within an `Array.prototype.sort()` block for ISO 8601 strings causes a massive performance bottleneck due to redundant object creation and string parsing. Since ISO 8601 strings are inherently lexicographically sortable, direct string comparison is orders of magnitude faster.
-**Action:** When sorting objects by an ISO 8601 date string, use direct string comparison (e.g., `a.ts < b.ts ? -1 : (a.ts > b.ts ? 1 : 0)`) instead of parsing it into `Date` objects.## 2025-01-20 - Date object instantiation optimization
-**Learning:** Instantiating `new Date(e.ts)` within a loop that runs over large arrays (like hundreds of thousands of Spotify tracks) is incredibly slow. ISO 8601 strings are strictly ordered, so lexicographical string comparison is sufficient and much faster. Also, `Date.parse(e.ts)` returns the timestamp significantly faster than `new Date(e.ts).getTime()`.
-**Action:** Use string comparisons for bounds checking and `Date.parse()` when numeric timestamps are needed. Lazily instantiate `Date` objects only when you actually need methods like `.getUTCMonth()`.
+## 2024-05-24 - Avoid Max Call Stack and Optimize Sorting
+**Learning:** `Array.prototype.push(...largeArray)` triggers a `RangeError: Maximum call stack size exceeded` for large datasets (e.g. 500k objects), which happens when loading raw Spotify exports. Also, parsing ISO 8601 timestamps into `Date` objects in a sort callback is highly inefficient.
+**Action:** Use a `for` loop to push items to avoid call stack limits. Compare ISO 8601 string representations lexicographically for sorting instead of using `new Date().getTime()` to improve speed.
