@@ -20,7 +20,7 @@ jobs:
           echo "=== Auditing PR Diff for Bot Regressions, Hallucinations & Conflict Markers ==="
 
           # 1. Reject Unresolved Git Merge Conflict Markers
-          CONFLICTS=$(git diff origin/${{ github.base_ref }}...HEAD | grep -E '^\+\s*(\<\<\<\<\<\<\<|\=\=\=\=\=\=\=|\>\>\>\>\>\>\>|\|\|\|\|\|\|\|)' || true)
+          CONFLICTS=$(git diff origin/${{ github.base_ref }}...HEAD | grep -E '^\+\s*(<{7}|={7}|>{7}|\|{7})' || true)
           if [ -n "$CONFLICTS" ]; then
             echo "❌ ERROR: PR adds unresolved Git merge conflict markers (<<<<<<<, =======, >>>>>>>). Auto-failing."
             echo "$CONFLICTS"
