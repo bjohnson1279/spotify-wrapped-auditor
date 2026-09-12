@@ -14,12 +14,22 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
-        const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-        const parsed = JSON.parse(raw);
-        // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
-        // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
-        for (let i = 0; i < parsed.length; i++) {
-            rawEvents.push(parsed[i]);
+        try {
+            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+            const parsed = JSON.parse(raw);
+
+            if (!Array.isArray(parsed)) {
+                console.warn(`[WARNING] Skipping file ${file}: Expected an array but received a different JSON structure.`);
+                return;
+            }
+
+            // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
+            // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
+            for (let i = 0; i < parsed.length; i++) {
+                rawEvents.push(parsed[i]);
+            }
+        } catch (error) {
+            console.warn(`[WARNING] Failed to read or parse file ${file}. It may be corrupted or not valid JSON.`);
         }
     });
 
