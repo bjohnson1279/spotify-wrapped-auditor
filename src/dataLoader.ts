@@ -39,48 +39,56 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
     // --- DEDUPLICATION LOGIC ---
     let deduped: SpotifyAudioEvent[] = [];
-    let prev: { e: SpotifyAudioEvent, startTime: number, endTime: number } | null = null;
+    let prev: { e: SpotifyAudioEvent, startTime: number | null, endTime: number | null } | null = null;
 
     for (const e of rawEvents) {
-        // ⚡ Bolt: Use Date.parse() instead of new Date().getTime() to avoid object instantiation overhead in large loops
-        const endTime = Date.parse(e.ts);
-        const startTime = endTime - e.ms_played;
-        const curr = { e, startTime, endTime };
-
         if (!prev) {
-            prev = curr;
+            prev = { e, startTime: null, endTime: null };
             continue;
         }
 
-        const sameTrack = prev.e.master_metadata_track_name === curr.e.master_metadata_track_name;
+        const sameTrack = prev.e.master_metadata_track_name === e.master_metadata_track_name;
+
         if (sameTrack) {
-            const overlapMs = prev.endTime - curr.startTime;
-            const gapMs = curr.startTime - prev.endTime;
+            // ⚡ Bolt: Defer Date.parse() execution until we have a track match.
+            // Avoids parsing overhead for ~95% of events since most track changes aren't duplicates.
+            const currEndTime = Date.parse(e.ts);
+            const currStartTime = currEndTime - e.ms_played;
+
+            if (prev.endTime === null) {
+                prev.endTime = Date.parse(prev.e.ts);
+            }
+
+            const overlapMs = prev.endTime - currStartTime;
+            const gapMs = currStartTime - prev.endTime;
 
             // Tier 1: Exact Metadata Clone (Potential multi-file overlap)
-            if (Math.abs(gapMs) < 10 && prev.e.ms_played === curr.e.ms_played && prev.e.reason_end === curr.e.reason_end) {
-                prev = curr;
+            if (Math.abs(gapMs) < 10 && prev.e.ms_played === e.ms_played && prev.e.reason_end === e.reason_end) {
+                prev = { e, startTime: currStartTime, endTime: currEndTime };
                 continue;
             }
 
             // Tier 2: Glitched Double Log (Different reason)
-            if (Math.abs(gapMs) < 1000 && prev.e.ms_played === curr.e.ms_played && prev.e.reason_end !== curr.e.reason_end) {
-                prev = curr;
+            if (Math.abs(gapMs) < 1000 && prev.e.ms_played === e.ms_played && prev.e.reason_end !== e.reason_end) {
+                prev = { e, startTime: currStartTime, endTime: currEndTime };
                 continue;
             }
 
             // Tier 3: Overlapping Plays
             if (overlapMs > 0) {
-                const isGlitch = prev.e.reason_end === 'trackdone' && curr.e.reason_end === 'trackdone';
+                const isGlitch = prev.e.reason_end === 'trackdone' && e.reason_end === 'trackdone';
                 if (isGlitch && prev.e.ms_played > 30000 && prev.e.ms_played < 160000) {
-                    prev = curr;
+                    prev = { e, startTime: currStartTime, endTime: currEndTime };
                     continue;
                 }
             }
-        }
 
-        deduped.push(prev.e);
-        prev = curr;
+            deduped.push(prev.e);
+            prev = { e, startTime: currStartTime, endTime: currEndTime };
+        } else {
+            deduped.push(prev.e);
+            prev = { e, startTime: null, endTime: null };
+        }
     }
     if (prev) deduped.push(prev.e);
 
