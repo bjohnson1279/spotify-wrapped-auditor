@@ -26,7 +26,7 @@ const runSearch = () => {
         e.ms_played >= 30000 &&
         e.ms_played < 60000 &&
         e.master_metadata_album_artist_name !== '311' &&
-        e.ip_addr === '76.149.238.152' &&
+        (process.env.HOME_IP ? e.ip_addr === process.env.HOME_IP : false) &&
         new Date(e.ts) < new Date('2025-11-10T11:59:59Z')
     );
 

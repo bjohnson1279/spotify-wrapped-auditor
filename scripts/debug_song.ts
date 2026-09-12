@@ -59,7 +59,7 @@ const runDebug = () => {
         const full = `${e.master_metadata_track_name} - ${e.master_metadata_album_artist_name}`;
         if (full !== TARGET) return;
         const ts = new Date(e.ts);
-        const isIPv4 = e.ip_addr === '76.149.238.152';
+        const isIPv4 = process.env.HOME_IP ? e.ip_addr === process.env.HOME_IP : false;
 
         let drop = null;
         if (ts < CONFIG.START_DATE || ts > CONFIG.END_DATE) drop = "Date";
