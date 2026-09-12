@@ -18,3 +18,7 @@
 ## Hallucinatory Task & Empty PR Directives
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
+
+## 2024-06-25 - Defer Expensive Operations in Large Loops
+**Learning:** Performing string parsing (`Date.parse()`) inside large iterative loops over Spotify history arrays causes a massive performance bottleneck. Because the majority of deduplication checks are bounded by a fast string comparison (checking if tracks are identical), calculating `Date.parse()` on every single row wastes significant execution time.
+**Action:** Defer expensive parsing operations. Only evaluate timestamps in loops if the fast-path condition (e.g. `sameTrack === true`) evaluates to true.
