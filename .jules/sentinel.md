@@ -39,3 +39,8 @@
 ## Hallucinatory Task & Empty PR Directives
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
+
+## 2025-09-13 - Top-Level Unhandled Exception Stack Trace Leak
+**Vulnerability:** The top-level `runAudit()` function in `index.ts` was not wrapped in a `try...catch` block. If file I/O operations failed (e.g., the `data/` directory did not exist), Node.js would crash and print a full stack trace to stdout, potentially leaking internal paths and application structure.
+**Learning:** Even if inner functions (like JSON parsing) are wrapped in `try...catch`, top-level orchestration code can still throw exceptions (like `fs.readdirSync` failing on a missing directory).
+**Prevention:** Always wrap top-level application entry points in `try...catch` blocks to gracefully handle unexpected errors, log them securely without stack traces, and exit with an appropriate status code (e.g., `process.exit(1)`).
