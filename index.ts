@@ -97,4 +97,13 @@ const runAudit = () => {
     });
 };
 
-runAudit();
+try {
+    runAudit();
+} catch (error) {
+    if (error instanceof Error) {
+        console.error(`[ERROR] Audit failed: ${error.message}`);
+    } else {
+        console.error(`[ERROR] Audit failed due to an unknown error.`);
+    }
+    process.exit(1);
+}
