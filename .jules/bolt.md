@@ -19,6 +19,10 @@
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
 
+## 2024-05-25 - Avoid array concat in loops and optimize dictionary lookups
+**Learning:** `Array.prototype.concat` inside a loop leads to O(n²) memory reallocation and terrible performance, while `Array.prototype.push()` inside a `for` loop is amortized O(N) in Node.js and avoids call stack size errors. Additionally, replacing `.forEach()` with standard `for` loops and caching dictionary lookups (e.g. `let stat = stats[key]; if (!stat) { ... }`) significantly speeds up data aggregation over large datasets (by avoiding redundant lookups like `stats[key] = stats[key] || {}`).
+**Action:** Use manual `for` loops with `.push()` to combine large arrays instead of `.concat()` in a loop or spread syntax (`...`). Cache property lookups into local variables when repeatedly accessing/mutating properties on large objects.
+
 ## 2024-06-25 - Defer Expensive Operations in Large Loops
 **Learning:** Performing string parsing (`Date.parse()`) inside large iterative loops over Spotify history arrays causes a massive performance bottleneck. Because the majority of deduplication checks are bounded by a fast string comparison (checking if tracks are identical), calculating `Date.parse()` on every single row wastes significant execution time.
 **Action:** Defer expensive parsing operations. Only evaluate timestamps in loops if the fast-path condition (e.g. `sameTrack === true`) evaluates to true.
