@@ -85,4 +85,11 @@ const runAudit = () => {
     });
 };
 
-runAudit();
+try {
+    runAudit();
+} catch (error) {
+    // 🛡️ Sentinel: Prevent stack trace leaks on unhandled exceptions (e.g., missing data directory or corrupted files)
+    const message = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error(`\n[FATAL ERROR] The audit failed to complete: ${message}`);
+    process.exit(1);
+}
