@@ -18,3 +18,7 @@
 ## Hallucinatory Task & Empty PR Directives
 - **Zero-Diff Task Termination**: If the requested optimization, refactor, or fix is ALREADY natively present in the target branch, DO NOT create an empty pull request or commit an acknowledgment PR. Exit the task cleanly without opening a PR.
 - **Stale Suggestion Guard**: Always verify the current code on `main`/`master` before planning changes. If no actionable diff is required, cancel task execution immediately.
+
+## 2024-09-14 - Optimize Aggregation Loops over Large Datasets
+**Learning:** Using `.forEach()` with redundant object property lookups (like `stats[key] = stats[key] || {}`) is significantly slower than standard `for` loops with locally cached dictionary lookups, especially when aggregating millions of JSON records.
+**Action:** When aggregating large datasets, replace `.forEach()` with a traditional `for (let i = 0; i < array.length; i++)` loop and cache the current object reference (e.g. `let stat = stats[key]; if (!stat) ...`) to eliminate double lookups.

@@ -52,12 +52,14 @@ const runAudit = () => {
     let musicMs = 0;
     let podcastMs = 0;
 
-    filtered.forEach(e => {
-        if (e.audiobook_title) return;
+    // ⚡ Bolt: Use standard for loop and local variable caching instead of .forEach() and redundant lookups
+    for (let i = 0; i < filtered.length; i++) {
+        const e = filtered[i];
+        if (e.audiobook_title) continue;
 
         if (e.episode_name || e.episode_show_name) {
             podcastMs += e.ms_played;
-            return;
+            continue;
         }
 
         musicMs += e.ms_played;
@@ -65,14 +67,16 @@ const runAudit = () => {
         const track = e.master_metadata_track_name || 'Unknown Track';
         const trackKey = `${track} - ${artist} `;
 
-        trackStats[trackKey] = trackStats[trackKey] || { count: 0, time: 0 };
-        trackStats[trackKey].count++;
-        trackStats[trackKey].time += e.ms_played;
+        let tStat = trackStats[trackKey];
+        if (!tStat) tStat = trackStats[trackKey] = { count: 0, time: 0 };
+        tStat.count++;
+        tStat.time += e.ms_played;
 
-        artistStats[artist] = artistStats[artist] || { count: 0, time: 0 };
-        artistStats[artist].count++;
-        artistStats[artist].time += e.ms_played;
-    });
+        let aStat = artistStats[artist];
+        if (!aStat) aStat = artistStats[artist] = { count: 0, time: 0 };
+        aStat.count++;
+        aStat.time += e.ms_played;
+    }
 
     // 4. Report
     console.log(`\nMusic Listening: ${Math.floor(musicMs / 3600000)} hours`);
