@@ -30,3 +30,7 @@
 ## 2024-07-02 - Avoid String Concatenations Inside Inner Loops
 **Learning:** Performing template string literals (e.g., \`${track} - ${artist} \`) inside a large iterative or nested loop causes massive memory reallocation and garbage collection overhead in V8. In this codebase's `applyWrappedFilters`, creating strings for `currName`, `candidateName`, `prevName`, and `nextName` redundantly thousands of times took almost ~4s on a 500k item list.
 **Action:** Replace string concatenation comparisons with direct boolean property comparisons (e.g., `candidate.track === e.track && candidate.artist === e.artist`). This avoids allocating intermediate strings inside the heap, significantly improving performance.
+
+## 2025-02-12 - Avoid process.env lookups in hot loops
+**Learning:** Accessing `process.env` properties (like `process.env.HOME_IP`) is surprisingly expensive in Node.js because it crosses the C++ boundary and does string conversions. When done inside a hot loop (like a `.filter()` over hundreds of thousands of items), it can add a huge amount of overhead.
+**Action:** Extract `process.env` lookups outside of large iterative loops into a local constant and use that local variable inside the loop.

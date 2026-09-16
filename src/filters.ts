@@ -10,6 +10,7 @@ export interface AuditConfig {
 export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditConfig): SpotifyAudioEvent[] => {
     const startDateStr = config.START_DATE.toISOString();
     const endDateStr = config.END_DATE.toISOString();
+    const homeIp = process.env.HOME_IP; // ⚡ Bolt: Cache process.env lookup outside the loop
 
     return deduped.filter((e, index) => {
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
@@ -19,7 +20,7 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         // Handle unknown reason for short plays (likely glitches)
         if (e.reason_end === 'unknown' && e.ms_played < 32000) return false;
 
-        const isIPv4 = process.env.HOME_IP ? e.ip_addr === process.env.HOME_IP : false;
+        const isIPv4 = homeIp ? e.ip_addr === homeIp : false;
         const artist = e.master_metadata_album_artist_name || 'Unknown Artist';
         const track = e.master_metadata_track_name || 'Unknown Track';
         const currTrack = e.master_metadata_track_name;
