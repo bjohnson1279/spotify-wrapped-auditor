@@ -26,7 +26,10 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
             for (let i = 0; i < parsed.length; i++) {
-                rawEvents.push(parsed[i]);
+                const item = parsed[i];
+                if (item && typeof item === 'object' && typeof item.ts === 'string' && typeof item.ms_played === 'number') {
+                    rawEvents.push(item);
+                }
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${file}. It may be corrupted or not valid JSON.`);
