@@ -26,3 +26,7 @@
 ## 2024-06-25 - Defer Expensive Operations in Large Loops
 **Learning:** Performing string parsing (`Date.parse()`) inside large iterative loops over Spotify history arrays causes a massive performance bottleneck. Because the majority of deduplication checks are bounded by a fast string comparison (checking if tracks are identical), calculating `Date.parse()` on every single row wastes significant execution time.
 **Action:** Defer expensive parsing operations. Only evaluate timestamps in loops if the fast-path condition (e.g. `sameTrack === true`) evaluates to true.
+
+## 2024-07-02 - Avoid String Concatenations Inside Inner Loops
+**Learning:** Performing template string literals (e.g., \`${track} - ${artist} \`) inside a large iterative or nested loop causes massive memory reallocation and garbage collection overhead in V8. In this codebase's `applyWrappedFilters`, creating strings for `currName`, `candidateName`, `prevName`, and `nextName` redundantly thousands of times took almost ~4s on a 500k item list.
+**Action:** Replace string concatenation comparisons with direct boolean property comparisons (e.g., `candidate.track === e.track && candidate.artist === e.artist`). This avoids allocating intermediate strings inside the heap, significantly improving performance.

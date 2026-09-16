@@ -22,7 +22,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         const isIPv4 = process.env.HOME_IP ? e.ip_addr === process.env.HOME_IP : false;
         const artist = e.master_metadata_album_artist_name || 'Unknown Artist';
         const track = e.master_metadata_track_name || 'Unknown Track';
-        const currName = `${track} - ${artist} `;
+        const currTrack = e.master_metadata_track_name;
+        const currArtist = e.master_metadata_album_artist_name;
 
         // RULE 1: UNIVERSAL GLITCH / SPLIT PLAY (Context-Aware)
         let nextSameTrack: SpotifyAudioEvent | null = null;
@@ -31,8 +32,7 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 
         for (let j = index + 1; j < Math.min(index + 5, deduped.length); j++) {
             const candidate = deduped[j];
-            const candidateName = `${candidate.master_metadata_track_name} - ${candidate.master_metadata_album_artist_name} `;
-            if (candidateName === currName) {
+            if (candidate.master_metadata_track_name === currTrack && candidate.master_metadata_album_artist_name === currArtist) {
                 nextSameTrack = candidate;
                 if (tsTime === null) tsTime = Date.parse(e.ts);
                 gapToNextSame = Math.abs(Date.parse(candidate.ts) - tsTime);
@@ -63,8 +63,9 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         if (e.ms_played < 60000 && isIPv4) {
             const prevTrack = deduped[index - 1];
             const nextTrack = deduped[index + 1];
-            const prevName = prevTrack ? `${prevTrack.master_metadata_track_name} - ${prevTrack.master_metadata_album_artist_name} ` : null;
-            const nextName = nextTrack ? `${nextTrack.master_metadata_track_name} - ${nextTrack.master_metadata_album_artist_name} ` : null;
+            const isPrevSame = prevTrack ? (prevTrack.master_metadata_track_name === currTrack && prevTrack.master_metadata_album_artist_name === currArtist) : false;
+            const isNextSame = nextTrack ? (nextTrack.master_metadata_track_name === currTrack && nextTrack.master_metadata_album_artist_name === currArtist) : false;
+            const isPrevNextSame = (prevTrack && nextTrack) ? (prevTrack.master_metadata_track_name === nextTrack.master_metadata_track_name && prevTrack.master_metadata_album_artist_name === nextTrack.master_metadata_album_artist_name) : false;
 
             if (tsTime === null) tsTime = Date.parse(e.ts);
             const prevGap = prevTrack ? Math.abs(tsTime - Date.parse(prevTrack.ts)) : Infinity;
@@ -72,16 +73,16 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 
             // 3.1: Consecutive Redundancy
             if (e.reason_end !== 'trackdone' && e.master_metadata_album_artist_name !== '311') {
-                const neighbor = (currName === prevName) ? prevTrack : nextTrack;
+                const neighbor = isPrevSame ? prevTrack : nextTrack;
                 if (neighbor && neighbor.ms_played >= 30000) {
-                    if ((currName === prevName && prevGap < 1800000) || (currName === nextName && nextGap < 1800000)) {
+                    if ((isPrevSame && prevGap < 1800000) || (isNextSame && nextGap < 1800000)) {
                         return false;
                     }
                 }
             }
 
             // Sandwich redundancy
-            if (prevName && prevName === nextName && prevGap < 600000 && e.reason_end !== 'trackdone') return false;
+            if (isPrevNextSame && prevGap < 600000 && e.reason_end !== 'trackdone') return false;
 
             // 3.3: Late Year Logout Filter
             if (e.master_metadata_album_artist_name !== '311') {
