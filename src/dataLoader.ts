@@ -4,7 +4,14 @@ import * as path from 'path';
 import { SpotifyAudioEvent } from '../interface/SpotifyAudioEvent.js';
 
 export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudioEvent[] => {
-    const allFiles = fs.readdirSync(dataDir);
+    let allFiles: string[];
+    try {
+        allFiles = fs.readdirSync(dataDir);
+    } catch (error) {
+        // Log original error for internal debugging, but throw a safe error message to avoid path leakage
+        console.error(`[ERROR] Internal operation failed during directory read.`, error);
+        throw new Error('Data directory not found or cannot be read. Please ensure the data directory exists and is accessible.');
+    }
     const relevantFiles = allFiles.filter(f => {
         const isJson = f.endsWith('.json');
         if (!year) return isJson;

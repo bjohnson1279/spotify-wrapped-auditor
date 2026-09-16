@@ -44,3 +44,8 @@
 **Vulnerability:** The top-level `runAudit()` function in `index.ts` was not wrapped in a `try...catch` block. If file I/O operations failed (e.g., the `data/` directory did not exist), Node.js would crash and print a full stack trace to stdout, potentially leaking internal paths and application structure.
 **Learning:** Even if inner functions (like JSON parsing) are wrapped in `try...catch`, top-level orchestration code can still throw exceptions (like `fs.readdirSync` failing on a missing directory).
 **Prevention:** Always wrap top-level application entry points in `try...catch` blocks to gracefully handle unexpected errors, log them securely without stack traces, and exit with an appropriate status code (e.g., `process.exit(1)`).
+
+## 2026-09-16 - Path Leakage in File System Error Messages
+**Vulnerability:** Unhandled filesystem errors (like `ENOENT` from `fs.readdirSync`) bubbled up to the top-level catch block and were logged in their entirety. The `error.message` property of Node.js `fs` errors includes the internal filesystem path (e.g., `scandir '/app/data'`), leading to information disclosure.
+**Learning:** Relying solely on top-level `try...catch` blocks for error handling is insufficient if the original system error messages are printed directly to the console or user output. System errors often contain sensitive environmental data.
+**Prevention:** Wrap specific, risky I/O operations (like `fs.readdirSync`) in targeted `try...catch` blocks. Log the original system error for internal debugging, but throw a new, sanitized `Error` with a safe, generic message to prevent path leakage to end-users or external logs.
