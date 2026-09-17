@@ -34,3 +34,7 @@
 ## 2025-02-12 - Avoid process.env lookups in hot loops
 **Learning:** Accessing `process.env` properties (like `process.env.HOME_IP`) is surprisingly expensive in Node.js because it crosses the C++ boundary and does string conversions. When done inside a hot loop (like a `.filter()` over hundreds of thousands of items), it can add a huge amount of overhead.
 **Action:** Extract `process.env` lookups outside of large iterative loops into a local constant and use that local variable inside the loop.
+
+## 2025-03-09 - Avoid Array.prototype.filter in Hot Loops
+**Learning:** In hot loops over large datasets, `Array.prototype.filter()` with a complex callback introduces significant function allocation and invocation overhead. This causes garbage collection pressure and slower overall execution times compared to standard for-loops.
+**Action:** Replace `Array.prototype.filter()` with standard `for` loops and push directly to a result array when optimizing hot loops to avoid callback overhead in JavaScript/TypeScript.
