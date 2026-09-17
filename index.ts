@@ -16,6 +16,14 @@ const runAudit = () => {
     const year = yearArg ? parseInt(yearArg) : 2025;
     const TOP_N = topNArg ? parseInt(topNArg) : 200;
 
+    // Validate CLI inputs
+    if (isNaN(year)) {
+        throw new Error('Invalid year provided. Please provide a valid numeric year.');
+    }
+    if (isNaN(TOP_N) || TOP_N <= 0) {
+        throw new Error('Invalid TOP_N provided. Please provide a positive numeric value for --top.');
+    }
+
     console.log(`\n--- Starting Spotify Audit ---`);
     if (!process.env.HOME_IP) {
         console.warn(`[WARNING] HOME_IP environment variable is not set. IPv4-specific filtering logic will be disabled.`);

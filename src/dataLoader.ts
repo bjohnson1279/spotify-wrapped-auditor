@@ -9,7 +9,8 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
         allFiles = fs.readdirSync(dataDir);
     } catch (error) {
         // Log original error for internal debugging, but throw a safe error message to avoid path leakage
-        console.error(`[ERROR] Internal operation failed during directory read.`, error);
+        const errorCode = error instanceof Error && 'code' in error ? (error as any).code : 'UNKNOWN';
+        console.error(`[ERROR] Internal operation failed during directory read. Code: ${errorCode}`);
         throw new Error('Data directory not found or cannot be read. Please ensure the data directory exists and is accessible.');
     }
     const relevantFiles = allFiles.filter(f => {
