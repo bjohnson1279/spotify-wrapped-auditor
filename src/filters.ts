@@ -74,14 +74,18 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             const isNextSame = nextTrack ? (nextTrack.master_metadata_track_name === currTrack && nextTrack.master_metadata_album_artist_name === currArtist) : false;
             const isPrevNextSame = (prevTrack && nextTrack) ? (prevTrack.master_metadata_track_name === nextTrack.master_metadata_track_name && prevTrack.master_metadata_album_artist_name === nextTrack.master_metadata_album_artist_name) : false;
 
-            if (tsTime === null) tsTime = Date.parse(e.ts);
-            const prevGap = prevTrack ? Math.abs(tsTime - Date.parse(prevTrack.ts)) : Infinity;
-            const nextGap = nextTrack ? Math.abs(Date.parse(nextTrack.ts) - tsTime) : Infinity;
+            // ⚡ Bolt: Defer Date.parse() execution until we actually need it for the gap comparisons
+            let prevGap = Infinity;
+            let nextGap = Infinity;
 
             // 3.1: Consecutive Redundancy
             if (e.reason_end !== 'trackdone' && e.master_metadata_album_artist_name !== '311') {
                 const neighbor = isPrevSame ? prevTrack : nextTrack;
                 if (neighbor && neighbor.ms_played >= 30000) {
+                    if (tsTime === null) tsTime = Date.parse(e.ts);
+                    if (isPrevSame && prevTrack) prevGap = Math.abs(tsTime - Date.parse(prevTrack.ts));
+                    if (isNextSame && nextTrack) nextGap = Math.abs(Date.parse(nextTrack.ts) - tsTime);
+
                     if ((isPrevSame && prevGap < 1800000) || (isNextSame && nextGap < 1800000)) {
                         continue;
                     }
@@ -89,7 +93,12 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             }
 
             // Sandwich redundancy
-            if (isPrevNextSame && prevGap < 600000 && e.reason_end !== 'trackdone') continue;
+            if (isPrevNextSame && e.reason_end !== 'trackdone') {
+                if (tsTime === null) tsTime = Date.parse(e.ts);
+                if (prevGap === Infinity && prevTrack) prevGap = Math.abs(tsTime - Date.parse(prevTrack.ts));
+
+                if (prevGap < 600000) continue;
+            }
 
             // 3.3: Late Year Logout Filter
             if (e.master_metadata_album_artist_name !== '311') {
