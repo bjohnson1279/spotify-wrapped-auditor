@@ -3,6 +3,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SpotifyAudioEvent } from '../interface/SpotifyAudioEvent.js';
 
+// 🛡️ Sentinel: Sanitize strings to prevent Terminal/Log Injection via ANSI escape codes or control characters
+const sanitizeString = (val: any): string | null => {
+    if (val === null || val === undefined) return null;
+    let strVal: string;
+    if (typeof val !== 'string') {
+        try {
+            strVal = String(val);
+        } catch (e) {
+            return 'Invalid Data'; // Fallback for objects without toString (e.g. Object.create(null))
+        }
+    } else {
+        strVal = val;
+    }
+    return strVal.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]|[\x00-\x1F\x7F-\x9F]/g, '');
+};
+
 export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudioEvent[] => {
     let allFiles: string[];
     try {
@@ -36,6 +52,13 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
                 if (item && typeof item === 'object' && typeof item.ts === 'string' && typeof item.ms_played === 'number') {
+                    // Sanitize potential terminal injection vectors
+                    if ('master_metadata_track_name' in item) {
+                        item.master_metadata_track_name = sanitizeString(item.master_metadata_track_name);
+                    }
+                    if ('master_metadata_album_artist_name' in item) {
+                        item.master_metadata_album_artist_name = sanitizeString(item.master_metadata_album_artist_name);
+                    }
                     rawEvents.push(item);
                 }
             }
