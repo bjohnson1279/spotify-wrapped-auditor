@@ -38,3 +38,7 @@
 ## 2025-03-09 - Avoid Array.prototype.filter in Hot Loops
 **Learning:** In hot loops over large datasets, `Array.prototype.filter()` with a complex callback introduces significant function allocation and invocation overhead. This causes garbage collection pressure and slower overall execution times compared to standard for-loops.
 **Action:** Replace `Array.prototype.filter()` with standard `for` loops and push directly to a result array when optimizing hot loops to avoid callback overhead in JavaScript/TypeScript.
+
+## 2024-08-01 - Avoid eager Date.parse evaluation
+**Learning:** Evaluating `Date.parse(e.ts)` universally at the top of an inner loop causes significant slowdowns when iterating across hundreds of thousands of items, even if it is only used conditionally downstream.
+**Action:** Always defer expensive string parsing like `Date.parse()` until the exact block where it is used. Lazy-load values in a scope-sensitive way.
