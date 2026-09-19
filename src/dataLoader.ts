@@ -52,7 +52,9 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let deduped: SpotifyAudioEvent[] = [];
     let prev: { e: SpotifyAudioEvent, startTime: number | null, endTime: number | null } | null = null;
 
-    for (const e of rawEvents) {
+    // ⚡ Bolt: Replace for...of with a standard for loop to avoid iterator overhead on large arrays
+    for (let i = 0; i < rawEvents.length; i++) {
+        const e = rawEvents[i];
         if (!prev) {
             prev = { e, startTime: null, endTime: null };
             continue;

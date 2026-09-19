@@ -42,3 +42,7 @@
 ## 2024-08-01 - Avoid eager Date.parse evaluation
 **Learning:** Evaluating `Date.parse(e.ts)` universally at the top of an inner loop causes significant slowdowns when iterating across hundreds of thousands of items, even if it is only used conditionally downstream.
 **Action:** Always defer expensive string parsing like `Date.parse()` until the exact block where it is used. Lazy-load values in a scope-sensitive way.
+
+## 2025-09-19 - Replace Iterators and Array.forEach in Hot Paths
+**Learning:** Using `for...of` iterators over large arrays (like 500k+ elements) has non-trivial overhead in V8 because of the iterator protocol. Similarly, using `Array.prototype.forEach` causes callback allocation and invocation overhead in both file loading routines and reporting. Replacing these with standard `for (let i = 0; i < array.length; i++)` loops gives noticeable performance gains when traversing extremely large datasets.
+**Action:** Default to standard `for` loops when iterating over large datasets in critical hot paths to avoid the overhead associated with iterators and callback functions.
