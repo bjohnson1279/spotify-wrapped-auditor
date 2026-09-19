@@ -17,8 +17,8 @@ const runAudit = () => {
     const TOP_N = topNArg ? parseInt(topNArg) : 200;
 
     // Validate CLI inputs
-    if (isNaN(year)) {
-        throw new Error('Invalid year provided. Please provide a valid numeric year.');
+    if (isNaN(year) || year < 1970 || year > 2100) {
+        throw new Error('Invalid year provided. Please provide a valid numeric year between 1970 and 2100.');
     }
     if (isNaN(TOP_N) || TOP_N <= 0) {
         throw new Error('Invalid TOP_N provided. Please provide a positive numeric value for --top.');
