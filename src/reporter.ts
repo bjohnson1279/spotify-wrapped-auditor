@@ -10,6 +10,11 @@ export interface ReporterConfig {
     TITLE: string;
 }
 
+const sanitize = (str: string): string => {
+    // Strip ANSI escape codes and control characters to prevent Terminal/Log Injection
+    return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+};
+
 export const generateReport = (trackStats: Record<string, TrackStats>, artistStats: Record<string, TrackStats>, config: ReporterConfig) => {
     console.log(`\n === ${config.TITLE} === `);
 
@@ -18,7 +23,7 @@ export const generateReport = (trackStats: Record<string, TrackStats>, artistSta
         .slice(0, config.TOP_N);
 
     sortedSongs.forEach((s, i) => {
-        console.log(`#${i + 1} ${s[0]}: ${s[1].count} plays (${Math.floor(s[1].time / 60000)}m)`);
+        console.log(`#${i + 1} ${sanitize(s[0])}: ${s[1].count} plays (${Math.floor(s[1].time / 60000)}m)`);
     });
 
     console.log(`\n === TOP ${config.TOP_ARTISTS_N} ARTISTS (By Time) === `);
@@ -29,7 +34,7 @@ export const generateReport = (trackStats: Record<string, TrackStats>, artistSta
     sortedArtistsByTime.forEach((a, i) => {
         const minutes = Math.floor(a[1].time / 60000);
         const hours = (a[1].time / 3600000).toFixed(1);
-        console.log(`#${i + 1} ${a[0]}: ${minutes}m (${hours}h)`);
+        console.log(`#${i + 1} ${sanitize(a[0])}: ${minutes}m (${hours}h)`);
     });
 
     console.log(`\n === TOP ${config.TOP_ARTISTS_N} ARTISTS (By Play Count) === `);
@@ -38,6 +43,6 @@ export const generateReport = (trackStats: Record<string, TrackStats>, artistSta
         .slice(0, config.TOP_ARTISTS_N);
 
     sortedArtistsByCount.forEach((a, i) => {
-        console.log(`#${i + 1} ${a[0]}: ${a[1].count} plays`);
+        console.log(`#${i + 1} ${sanitize(a[0])}: ${a[1].count} plays`);
     });
 };
