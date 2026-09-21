@@ -55,13 +55,14 @@ const runAudit = () => {
     console.log(`Filtered down to ${filtered.length} valid plays.`);
 
     // 3. Aggregate
-    const trackStats: Record<string, TrackStats> = Object.create(null);
+    const trackStatsNested: Record<string, Record<string, TrackStats>> = Object.create(null);
     const artistStats: Record<string, TrackStats> = Object.create(null);
     let musicMs = 0;
     let podcastMs = 0;
 
     // ⚡ Bolt: Replaced .forEach with standard for-loop and cached property lookups.
     // This halves the time spent in the aggregation loop by avoiding redundant object accesses.
+    // ⚡ Bolt: Use nested map for grouping to avoid massive string concatenation overhead in hot loop.
     for (let i = 0; i < filtered.length; i++) {
         const e = filtered[i];
         if (e.audiobook_title) continue;
@@ -74,13 +75,17 @@ const runAudit = () => {
         musicMs += e.ms_played;
         const artist = e.master_metadata_album_artist_name || 'Unknown Artist';
         const track = e.master_metadata_track_name || 'Unknown Track';
-        // Fast string concatenation is preferred over template literals in tight loops
-        const trackKey = track + ' - ' + artist + ' ';
 
-        let tStat = trackStats[trackKey];
+        let artistMap = trackStatsNested[artist];
+        if (artistMap === undefined) {
+            artistMap = Object.create(null);
+            trackStatsNested[artist] = artistMap;
+        }
+
+        let tStat = artistMap[track];
         if (tStat === undefined) {
             tStat = { count: 0, time: 0 };
-            trackStats[trackKey] = tStat;
+            artistMap[track] = tStat;
         }
         tStat.count++;
         tStat.time += e.ms_played;
@@ -92,6 +97,15 @@ const runAudit = () => {
         }
         aStat.count++;
         aStat.time += e.ms_played;
+    }
+
+    // Flatten nested stats
+    const trackStats: Record<string, TrackStats> = Object.create(null);
+    for (const artist in trackStatsNested) {
+        const artistMap = trackStatsNested[artist];
+        for (const track in artistMap) {
+            trackStats[track + ' - ' + artist + ' '] = artistMap[track];
+        }
     }
 
     // 4. Report

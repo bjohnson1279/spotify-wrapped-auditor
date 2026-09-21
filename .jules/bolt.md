@@ -46,3 +46,7 @@
 ## 2025-03-09 - Avoid for...of iterators on large arrays
 **Learning:** Using `for...of` iterators over extremely large arrays (e.g., 500k+ elements from parsed JSON) introduces non-trivial overhead in V8 due to the iterator protocol setup and execution.
 **Action:** Prefer standard index-based `for` loops (`for (let i = 0; i < arr.length; i++)`) in hot paths (like data deduplication loops) to maximize execution speed and avoid iterator allocation overhead.
+
+## 2025-03-09 - Avoid Dynamic String Concatenation for Dictionary Keys in Hot Loops
+**Learning:** Performing dynamic string concatenations (e.g., `track + ' - ' + artist + ' '`) to create dictionary keys inside a hot loop traversing hundreds of thousands of events causes thousands of intermediate strings to be allocated in V8. This rapidly increases garbage collection overhead and significantly degrades aggregation performance.
+**Action:** Replace dynamic string key generation in hot loops with nested map structures (e.g., `stats[artist][track]`). By using the original un-concatenated strings as keys, no new string memory is allocated during the loop, which executes much faster. Once the loop is complete, the nested map can be flattened safely into the desired structure.
