@@ -3,6 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { SpotifyAudioEvent } from '../interface/SpotifyAudioEvent.js';
 
+const sanitizeLog = (str: string): string => {
+    // Strip ANSI escape codes and control characters to prevent Terminal/Log Injection
+    return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+};
+
 export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudioEvent[] => {
     let allFiles: string[];
     try {
@@ -27,7 +32,7 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             const parsed = JSON.parse(raw);
 
             if (!Array.isArray(parsed)) {
-                console.warn(`[WARNING] Skipping file ${file}: Expected an array but received a different JSON structure.`);
+                console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Expected an array but received a different JSON structure.`);
                 return;
             }
 
@@ -35,12 +40,12 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
-                if (item && typeof item === 'object' && typeof item.ts === 'string' && typeof item.ms_played === 'number') {
+                if (item && typeof item === 'object' && typeof item.ts === 'string' && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0) {
                     rawEvents.push(item);
                 }
             }
         } catch (error) {
-            console.warn(`[WARNING] Failed to read or parse file ${file}. It may be corrupted or not valid JSON.`);
+            console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }
     });
 
