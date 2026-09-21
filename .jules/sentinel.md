@@ -54,3 +54,8 @@
 **Vulnerability:** The `--year` CLI argument was parsed to an integer and checked with `isNaN()`, but bounds were not validated (e.g., `-1000` or `1e44` were allowed). When these extreme values were passed into the `Date` constructor later in the script (e.g., `new Date(`${year}-01-01T00:00:00Z`)`), it threw a `RangeError: Invalid time value`. This unhandled exception caused the application to crash ungracefully, creating a minor Denial of Service (DoS) risk from malformed inputs.
 **Learning:** Checking for `NaN` is not sufficient for numeric inputs that are later used in constrained contexts like Date boundaries. Extreme numbers (positive or negative) can bypass `isNaN` checks and still crash core Node.js APIs.
 **Prevention:** Explicitly validate numeric inputs against sensible boundaries (e.g., `year >= 1970 && year <= 2100`) before proceeding with execution, rather than relying solely on `isNaN`.
+
+## 2025-09-20 - Terminal Log Injection Prevention
+**Vulnerability:** External data (Spotify track/artist names) was being logged directly to stdout via `console.log` in `src/reporter.ts` without sanitization. If malformed data contained ANSI escape codes or control characters, it could lead to Log/Terminal injection, manipulating terminal output or potentially hiding log entries.
+**Learning:** Never trust string inputs derived from external sources like JSON files when outputting directly to the terminal, as they can contain harmful control codes.
+**Prevention:** Sanitize untrusted string outputs by stripping ANSI escape sequences and non-printable control characters before passing them to console logging functions.
