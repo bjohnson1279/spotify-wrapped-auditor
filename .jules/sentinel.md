@@ -59,3 +59,8 @@
 **Vulnerability:** External data (Spotify track/artist names) was being logged directly to stdout via `console.log` in `src/reporter.ts` without sanitization. If malformed data contained ANSI escape codes or control characters, it could lead to Log/Terminal injection, manipulating terminal output or potentially hiding log entries.
 **Learning:** Never trust string inputs derived from external sources like JSON files when outputting directly to the terminal, as they can contain harmful control codes.
 **Prevention:** Sanitize untrusted string outputs by stripping ANSI escape sequences and non-printable control characters before passing them to console logging functions.
+
+## 2026-09-21 - Terminal Log Injection via Filenames and Unbounded Numbers
+**Vulnerability:** Filenames from the `data/` directory were logged directly using `console.warn` without sanitization. An attacker crafting malicious filenames with ANSI codes could cause Terminal Log Injection. Also, the `ms_played` numeric field parsed from JSON lacked bounds and `isFinite` checks, potentially introducing `NaN` propagation or `Infinity` bugs (Denial of Service) if corrupted data was provided.
+**Learning:** Terminal log injection can happen not just through primary inputs, but also through secondary ones like dynamically read filenames. Furthermore, simple `typeof x === 'number'` checks are insufficient for JavaScript JSON parsing because `NaN` and `Infinity` pass this check.
+**Prevention:** Sanitize dynamically read filesystem filenames prior to outputting them to logs to strip control codes. Enforce strict numerical boundaries and use `Number.isFinite()` on data parsed from external JSON.
