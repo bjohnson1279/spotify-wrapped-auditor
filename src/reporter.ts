@@ -15,10 +15,11 @@ const sanitize = (str: string): string => {
     return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
 };
 
-export const generateReport = (trackStats: Record<string, TrackStats>, artistStats: Record<string, TrackStats>, config: ReporterConfig) => {
+export const generateReport = (trackStats: [string, TrackStats][], artistStats: [string, TrackStats][], config: ReporterConfig) => {
     console.log(`\n === ${config.TITLE} === `);
 
-    const sortedSongs = Object.entries(trackStats)
+    // ⚡ Bolt: Expect array instead of Record to avoid Object.entries() overhead
+    const sortedSongs = trackStats
         .sort((a, b) => b[1].count - a[1].count || b[1].time - a[1].time)
         .slice(0, config.TOP_N);
 
@@ -27,7 +28,7 @@ export const generateReport = (trackStats: Record<string, TrackStats>, artistSta
     });
 
     console.log(`\n === TOP ${config.TOP_ARTISTS_N} ARTISTS (By Time) === `);
-    const sortedArtistsByTime = Object.entries(artistStats)
+    const sortedArtistsByTime = [...artistStats]
         .sort((a, b) => b[1].time - a[1].time)
         .slice(0, config.TOP_ARTISTS_N);
 
@@ -38,7 +39,7 @@ export const generateReport = (trackStats: Record<string, TrackStats>, artistSta
     });
 
     console.log(`\n === TOP ${config.TOP_ARTISTS_N} ARTISTS (By Play Count) === `);
-    const sortedArtistsByCount = Object.entries(artistStats)
+    const sortedArtistsByCount = artistStats
         .sort((a, b) => b[1].count - a[1].count || b[1].time - a[1].time)
         .slice(0, config.TOP_ARTISTS_N);
 

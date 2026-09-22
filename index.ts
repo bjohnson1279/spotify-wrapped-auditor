@@ -55,8 +55,9 @@ const runAudit = () => {
     console.log(`Filtered down to ${filtered.length} valid plays.`);
 
     // 3. Aggregate
-    const trackStatsNested: Record<string, Record<string, TrackStats>> = Object.create(null);
-    const artistStats: Record<string, TrackStats> = Object.create(null);
+    // ⚡ Bolt: Use Map for faster dynamic dictionary lookups and inserts compared to Object.create(null)
+    const trackStatsNested = new Map<string, Map<string, TrackStats>>();
+    const artistStats = new Map<string, TrackStats>();
     let musicMs = 0;
     let podcastMs = 0;
 
@@ -76,43 +77,45 @@ const runAudit = () => {
         const artist = e.master_metadata_album_artist_name || 'Unknown Artist';
         const track = e.master_metadata_track_name || 'Unknown Track';
 
-        let artistMap = trackStatsNested[artist];
+        let artistMap = trackStatsNested.get(artist);
         if (artistMap === undefined) {
-            artistMap = Object.create(null);
-            trackStatsNested[artist] = artistMap;
+            artistMap = new Map<string, TrackStats>();
+            trackStatsNested.set(artist, artistMap);
         }
 
-        let tStat = artistMap[track];
+        let tStat = artistMap.get(track);
         if (tStat === undefined) {
             tStat = { count: 0, time: 0 };
-            artistMap[track] = tStat;
+            artistMap.set(track, tStat);
         }
         tStat.count++;
         tStat.time += e.ms_played;
 
-        let aStat = artistStats[artist];
+        let aStat = artistStats.get(artist);
         if (aStat === undefined) {
             aStat = { count: 0, time: 0 };
-            artistStats[artist] = aStat;
+            artistStats.set(artist, aStat);
         }
         aStat.count++;
         aStat.time += e.ms_played;
     }
 
     // Flatten nested stats
-    const trackStats: Record<string, TrackStats> = Object.create(null);
-    for (const artist in trackStatsNested) {
-        const artistMap = trackStatsNested[artist];
-        for (const track in artistMap) {
-            trackStats[track + ' - ' + artist + ' '] = artistMap[track];
+    // ⚡ Bolt: Convert Map directly to the array structure needed by generateReport
+    // rather than building an intermediate object. This saves memory and time.
+    const trackStats: [string, TrackStats][] = [];
+    for (const [artist, artistMap] of trackStatsNested.entries()) {
+        for (const [track, tStat] of artistMap.entries()) {
+            trackStats.push([track + ' - ' + artist + ' ', tStat]);
         }
     }
+    const finalArtistStats: [string, TrackStats][] = [...artistStats.entries()];
 
     // 4. Report
     console.log(`\nMusic Listening: ${Math.floor(musicMs / 3600000)} hours`);
     console.log(`Podcast Listening: ${Math.floor(podcastMs / 3600000)} hours`);
 
-    generateReport(trackStats, artistStats, {
+    generateReport(trackStats, finalArtistStats, {
         TOP_N,
         TOP_ARTISTS_N: 20,
         TITLE: allTime ? 'ALL-TIME WRAPPED AUDIT' : `${year} WRAPPED AUDIT`
