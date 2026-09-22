@@ -69,3 +69,9 @@
 **Vulnerability:** The CLI arguments `--year` and `--top` were validated using `isNaN()`, which fails to correctly catch values like `Infinity`, `-Infinity`, or extremely large numbers. Passing `--top=Infinity` could lead to unbounded outputs or terminal hanging, causing a DoS condition.
 **Learning:** `isNaN()` is insufficiently strict for numeric bounds checking when inputs dictate program execution loops, rendering output size, or are passed into internal APIs like `Date()`. `Number.isFinite()` and explicit boundaries are required.
 **Prevention:** Always validate numeric CLI arguments using `Number.isFinite()` and enforce sane, explicit min/max boundaries (e.g., `TOP_N <= 10000`) before proceeding.
+
+## 2025-09-22 - Memory Exhaustion via Unbounded String Lengths in JSON Parsing
+**Vulnerability:** External string inputs (like `ts`, `master_metadata_track_name`) from user-provided JSON files were type-checked (`typeof x === 'string'`) but not bounded by length. An attacker or corrupted export could supply a JSON file containing gigabytes of string data for a single field, leading to severe CPU overhead (e.g. during `Date.parse(e.ts)`) or memory exhaustion (Denial of Service).
+**Learning:** Basic type checking (e.g., `typeof === 'string'`) is insufficient when dealing with external, untrusted payloads that could be maliciously large.
+**Prevention:** Always validate and enforce strict maximum length constraints (e.g., `str.length <= 50`) on string fields parsed from external sources before processing them.
+
