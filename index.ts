@@ -20,8 +20,8 @@ const runAudit = () => {
     if (isNaN(year) || year < 1970 || year > 2100) {
         throw new Error('Invalid year provided. Please provide a valid numeric year between 1970 and 2100.');
     }
-    if (isNaN(TOP_N) || TOP_N <= 0) {
-        throw new Error('Invalid TOP_N provided. Please provide a positive numeric value for --top.');
+    if (isNaN(TOP_N) || TOP_N <= 0 || TOP_N > 10000) {
+        throw new Error('Invalid TOP_N provided. Please provide a positive numeric value for --top (maximum 10000).');
     }
 
     console.log(`\n--- Starting Spotify Audit ---`);

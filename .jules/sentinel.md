@@ -64,3 +64,8 @@
 **Vulnerability:** Filenames from the `data/` directory were logged directly using `console.warn` without sanitization. An attacker crafting malicious filenames with ANSI codes could cause Terminal Log Injection. Also, the `ms_played` numeric field parsed from JSON lacked bounds and `isFinite` checks, potentially introducing `NaN` propagation or `Infinity` bugs (Denial of Service) if corrupted data was provided.
 **Learning:** Terminal log injection can happen not just through primary inputs, but also through secondary ones like dynamically read filenames. Furthermore, simple `typeof x === 'number'` checks are insufficient for JavaScript JSON parsing because `NaN` and `Infinity` pass this check.
 **Prevention:** Sanitize dynamically read filesystem filenames prior to outputting them to logs to strip control codes. Enforce strict numerical boundaries and use `Number.isFinite()` on data parsed from external JSON.
+
+## 2026-09-21 - Unbounded Numeric Output (DoS)
+**Vulnerability:** The `--top` CLI argument was parsed to an integer and validated with `isNaN()` and `TOP_N <= 0`, but lacked an upper bound. A user could supply an extremely large number (e.g., `1e24`), which bypassed the validation and led to an unbounded loop or massive object slice during reporting, hanging the application and causing potential Denial of Service.
+**Learning:** Checking for positive numbers is insufficient when the value is used to control loop iterations or data output sizes. Unbounded numbers can hang Node.js applications or flood terminals.
+**Prevention:** Always enforce both lower and upper bounds on numeric inputs that dictate loop limits or array slice operations (e.g., `TOP_N > 10000`).
