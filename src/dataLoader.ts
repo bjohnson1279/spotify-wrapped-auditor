@@ -54,18 +54,23 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     rawEvents.sort((a, b) => a.ts < b.ts ? -1 : (a.ts > b.ts ? 1 : 0));
 
     // --- DEDUPLICATION LOGIC ---
-    let deduped: SpotifyAudioEvent[] = [];
-    let prev: { e: SpotifyAudioEvent, startTime: number | null, endTime: number | null } | null = null;
+    // ⚡ Bolt: Pre-allocate deduped array to prevent dynamic array resizing overhead
+    let deduped: SpotifyAudioEvent[] = new Array(rawEvents.length);
+    let dedupedIndex = 0;
+
+    // ⚡ Bolt: Flatten prev object to scalar variables to avoid massive object allocation in hot loop
+    let prevE: SpotifyAudioEvent | null = null;
+    let prevEndTime: number | null = null;
 
     // ⚡ Bolt: Replace for...of with a standard for-loop to avoid iterator overhead on large datasets
     for (let i = 0; i < rawEvents.length; i++) {
         const e = rawEvents[i];
-        if (!prev) {
-            prev = { e, startTime: null, endTime: null };
+        if (!prevE) {
+            prevE = e; prevEndTime = null;
             continue;
         }
 
-        const sameTrack = prev.e.master_metadata_track_name === e.master_metadata_track_name;
+        const sameTrack = prevE.master_metadata_track_name === e.master_metadata_track_name;
 
         if (sameTrack) {
             // ⚡ Bolt: Defer Date.parse() execution until we have a track match.
@@ -73,42 +78,43 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             const currEndTime = Date.parse(e.ts);
             const currStartTime = currEndTime - e.ms_played;
 
-            if (prev.endTime === null) {
-                prev.endTime = Date.parse(prev.e.ts);
+            if (prevEndTime === null) {
+                prevEndTime = Date.parse(prevE.ts);
             }
 
-            const overlapMs = prev.endTime - currStartTime;
-            const gapMs = currStartTime - prev.endTime;
+            const overlapMs = prevEndTime - currStartTime;
+            const gapMs = currStartTime - prevEndTime;
 
             // Tier 1: Exact Metadata Clone (Potential multi-file overlap)
-            if (Math.abs(gapMs) < 10 && prev.e.ms_played === e.ms_played && prev.e.reason_end === e.reason_end) {
-                prev = { e, startTime: currStartTime, endTime: currEndTime };
+            if (Math.abs(gapMs) < 10 && prevE.ms_played === e.ms_played && prevE.reason_end === e.reason_end) {
+                prevE = e; prevEndTime = currEndTime;
                 continue;
             }
 
             // Tier 2: Glitched Double Log (Different reason)
-            if (Math.abs(gapMs) < 1000 && prev.e.ms_played === e.ms_played && prev.e.reason_end !== e.reason_end) {
-                prev = { e, startTime: currStartTime, endTime: currEndTime };
+            if (Math.abs(gapMs) < 1000 && prevE.ms_played === e.ms_played && prevE.reason_end !== e.reason_end) {
+                prevE = e; prevEndTime = currEndTime;
                 continue;
             }
 
             // Tier 3: Overlapping Plays
             if (overlapMs > 0) {
-                const isGlitch = prev.e.reason_end === 'trackdone' && e.reason_end === 'trackdone';
-                if (isGlitch && prev.e.ms_played > 30000 && prev.e.ms_played < 160000) {
-                    prev = { e, startTime: currStartTime, endTime: currEndTime };
+                const isGlitch = prevE.reason_end === 'trackdone' && e.reason_end === 'trackdone';
+                if (isGlitch && prevE.ms_played > 30000 && prevE.ms_played < 160000) {
+                    prevE = e; prevEndTime = currEndTime;
                     continue;
                 }
             }
 
-            deduped.push(prev.e);
-            prev = { e, startTime: currStartTime, endTime: currEndTime };
+            deduped[dedupedIndex++] = prevE;
+            prevE = e; prevEndTime = currEndTime;
         } else {
-            deduped.push(prev.e);
-            prev = { e, startTime: null, endTime: null };
+            deduped[dedupedIndex++] = prevE;
+            prevE = e; prevEndTime = null;
         }
     }
-    if (prev) deduped.push(prev.e);
+    if (prevE) deduped[dedupedIndex++] = prevE;
 
+    deduped.length = dedupedIndex;
     return deduped;
 };

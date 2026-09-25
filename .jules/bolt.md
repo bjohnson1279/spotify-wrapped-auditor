@@ -1,3 +1,6 @@
 ## 2023-10-27 - Map optimization for nested dictionaries
 **Learning:** In V8, standard object-based dictionaries `Object.create(null)` can introduce significant overhead during high-volume insertion/lookups inside hot loops due to string hash calculations and object property management.
 **Action:** Use `new Map()` for dynamic dictionaries in data aggregation loops to achieve faster lookup/insertion, and use `Map.prototype.entries()` to bypass `Object.entries()` array allocations.
+## 2025-09-25 - Prevent dynamic array resizing overhead and scalarization inside large loops
+**Learning:** For extremely large arrays (e.g. over 500k elements in data load pipelines), dynamically building new arrays with `.push()` causes multiple O(N) array reallocation and memory copying procedures under the hood. In addition, creating wrapper objects strictly for loop state processing (e.g., `prev = { e, startTime, endTime }`) incurs significant garbage collection and object allocation overhead.
+**Action:** When maximum bounds are known, pre-allocate the array (e.g., `new Array(maxLength)`) and assign values via index tracking (`arr[index++] = val`). Flatten wrapper objects into scalar variables inside hot loops.
