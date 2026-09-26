@@ -64,3 +64,8 @@
 **Vulnerability:** Filenames from the `data/` directory were logged directly using `console.warn` without sanitization. An attacker crafting malicious filenames with ANSI codes could cause Terminal Log Injection. Also, the `ms_played` numeric field parsed from JSON lacked bounds and `isFinite` checks, potentially introducing `NaN` propagation or `Infinity` bugs (Denial of Service) if corrupted data was provided.
 **Learning:** Terminal log injection can happen not just through primary inputs, but also through secondary ones like dynamically read filenames. Furthermore, simple `typeof x === 'number'` checks are insufficient for JavaScript JSON parsing because `NaN` and `Infinity` pass this check.
 **Prevention:** Sanitize dynamically read filesystem filenames prior to outputting them to logs to strip control codes. Enforce strict numerical boundaries and use `Number.isFinite()` on data parsed from external JSON.
+
+## 2026-09-22 - Unbounded Output Loop Potential (DoS)
+**Vulnerability:** The `--top` argument lacked an upper bound limit. Large values (e.g., `1000000`) would be passed directly into loops during reporting logic, potentially causing memory exhaustion and terminal freezing as the app tries to build and print millions of lines.
+**Learning:** Terminal Denial of Service can occur if inputs are strictly positive numbers but unbound, leading to oversized allocations or print statements.
+**Prevention:** Always add a hard ceiling or upper bound for values controlling loop/print lengths to prevent terminal overload.
