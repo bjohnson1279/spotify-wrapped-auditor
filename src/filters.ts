@@ -12,9 +12,10 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
     const endDateStr = config.END_DATE.toISOString();
     const homeIp = process.env.HOME_IP; // ⚡ Bolt: Cache process.env lookup outside the loop
 
-    // ⚡ Bolt: Use a standard for-loop instead of .filter() to avoid callback overhead in hot loop
-    const result: SpotifyAudioEvent[] = [];
     const len = deduped.length;
+    // ⚡ Bolt: Pre-allocate array instead of using .push() to eliminate dynamic resizing overhead
+    const result: SpotifyAudioEvent[] = new Array(len);
+    let resultIdx = 0;
 
     for (let index = 0; index < len; index++) {
         const e = deduped[index];
@@ -114,8 +115,9 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         // Exclude non-music content
         if (e.audiobook_title) continue;
 
-        result.push(e);
+        result[resultIdx++] = e;
     }
+    result.length = resultIdx;
     return result;
 };
 
@@ -123,9 +125,10 @@ export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: Audit
     const startDateStr = config.START_DATE.toISOString();
     const endDateStr = config.END_DATE.toISOString();
 
-    // ⚡ Bolt: Use a standard for-loop instead of .filter() to avoid callback overhead
-    const result: SpotifyAudioEvent[] = [];
     const len = deduped.length;
+    // ⚡ Bolt: Pre-allocate array instead of using .push() to eliminate dynamic resizing overhead
+    const result: SpotifyAudioEvent[] = new Array(len);
+    let resultIdx = 0;
 
     for (let i = 0; i < len; i++) {
         const e = deduped[i];
@@ -133,8 +136,8 @@ export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: Audit
         if (e.ts < startDateStr || e.ts > endDateStr) continue;
         if (e.ms_played < config.MIN_MS_PLAYED) continue;
         if (e.audiobook_title) continue;
-        result.push(e);
+        result[resultIdx++] = e;
     }
-
+    result.length = resultIdx;
     return result;
 };
