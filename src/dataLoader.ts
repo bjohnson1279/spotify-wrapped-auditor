@@ -40,7 +40,13 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
-                if (item && typeof item === 'object' && typeof item.ts === 'string' && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0) {
+
+                // Validate string boundaries for DoS prevention
+                const isTsValid = typeof item.ts === 'string' && item.ts.length <= 50;
+                const isTrackValid = !item.master_metadata_track_name || (typeof item.master_metadata_track_name === 'string' && item.master_metadata_track_name.length <= 1000);
+                const isArtistValid = !item.master_metadata_album_artist_name || (typeof item.master_metadata_album_artist_name === 'string' && item.master_metadata_album_artist_name.length <= 1000);
+
+                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid) {
                     rawEvents.push(item);
                 }
             }
