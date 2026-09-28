@@ -54,7 +54,9 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     rawEvents.sort((a, b) => a.ts < b.ts ? -1 : (a.ts > b.ts ? 1 : 0));
 
     // --- DEDUPLICATION LOGIC ---
-    let deduped: SpotifyAudioEvent[] = [];
+    // ⚡ Bolt: Pre-allocate array to avoid dynamic resizing overhead
+    let deduped: SpotifyAudioEvent[] = new Array(rawEvents.length);
+    let dedupedIdx = 0;
     let prev: { e: SpotifyAudioEvent, startTime: number | null, endTime: number | null } | null = null;
 
     // ⚡ Bolt: Replace for...of with a standard for-loop to avoid iterator overhead on large datasets
@@ -101,14 +103,15 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 }
             }
 
-            deduped.push(prev.e);
+            deduped[dedupedIdx++] = prev.e;
             prev = { e, startTime: currStartTime, endTime: currEndTime };
         } else {
-            deduped.push(prev.e);
+            deduped[dedupedIdx++] = prev.e;
             prev = { e, startTime: null, endTime: null };
         }
     }
-    if (prev) deduped.push(prev.e);
+    if (prev) deduped[dedupedIdx++] = prev.e;
 
+    deduped.length = dedupedIdx;
     return deduped;
 };
