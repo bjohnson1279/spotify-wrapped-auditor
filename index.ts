@@ -13,15 +13,15 @@ const runAudit = () => {
     const allTime = args.includes('--all-time');
     const topNArg = args.find(a => a.startsWith('--top='))?.split('=')[1];
 
-    const year = yearArg ? parseInt(yearArg) : 2025;
-    const TOP_N = topNArg ? parseInt(topNArg) : 200;
+    const year = yearArg ? parseInt(yearArg, 10) : 2025;
+    const TOP_N = topNArg ? parseInt(topNArg, 10) : 200;
 
     // Validate CLI inputs
-    if (isNaN(year) || year < 1970 || year > 2100) {
+    if (!Number.isFinite(year) || year < 1970 || year > 2100) {
         throw new Error('Invalid year provided. Please provide a valid numeric year between 1970 and 2100.');
     }
-    if (isNaN(TOP_N) || TOP_N <= 0) {
-        throw new Error('Invalid TOP_N provided. Please provide a positive numeric value for --top.');
+    if (!Number.isFinite(TOP_N) || TOP_N <= 0 || TOP_N > 10000) {
+        throw new Error('Invalid TOP_N provided. Please provide a positive numeric value between 1 and 10000 for --top.');
     }
 
     console.log(`\n--- Starting Spotify Audit ---`);
