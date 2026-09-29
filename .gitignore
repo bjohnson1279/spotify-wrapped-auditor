@@ -32,3 +32,7 @@ fix_*.php
 update_*.php
 scratch_*
 *.scratch
+
+fix_*.cjs
+patch_*.py
+patch_*.sh
