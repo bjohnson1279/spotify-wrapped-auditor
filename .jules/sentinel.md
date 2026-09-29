@@ -75,3 +75,8 @@
 **Learning:** Basic type checking (e.g., `typeof === 'string'`) is insufficient when dealing with external, untrusted payloads that could be maliciously large.
 **Prevention:** Always validate and enforce strict maximum length constraints (e.g., `str.length <= 50`) on string fields parsed from external sources before processing them.
 
+
+## 2025-02-15 - Type Confusion via Incomplete String Validation
+**Vulnerability:** External JSON fields (like `master_metadata_track_name`, `reason_end`, `ip_addr`) were validated using truthiness (`!item.field`) before being implicitly assumed to be strings. An attacker could supply an object or array (e.g., `{"master_metadata_track_name": []}`) which passes truthiness checks but causes application crashes or prototype pollution when string methods (like `.replace()` or `.includes()`) are later called on them, or when they are concatenated.
+**Learning:** Truthiness checks do not validate types in JavaScript. When interacting with unvalidated third-party data, assuming a field is a string just because it is truthy exposes the application to type confusion vulnerabilities.
+**Prevention:** Always use explicit type checking (`field == null || typeof field === 'string'`) when verifying that parsed external JSON fields are strings to prevent type confusion and ensure data fidelity.

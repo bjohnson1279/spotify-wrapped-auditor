@@ -43,10 +43,15 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
                 // Validate string boundaries for DoS prevention
                 const isTsValid = typeof item.ts === 'string' && item.ts.length <= 50;
-                const isTrackValid = !item.master_metadata_track_name || (typeof item.master_metadata_track_name === 'string' && item.master_metadata_track_name.length <= 1000);
-                const isArtistValid = !item.master_metadata_album_artist_name || (typeof item.master_metadata_album_artist_name === 'string' && item.master_metadata_album_artist_name.length <= 1000);
+                const isTrackValid = item.master_metadata_track_name == null || (typeof item.master_metadata_track_name === 'string' && item.master_metadata_track_name.length <= 1000);
+                const isArtistValid = item.master_metadata_album_artist_name == null || (typeof item.master_metadata_album_artist_name === 'string' && item.master_metadata_album_artist_name.length <= 1000);
+                const isReasonEndValid = item.reason_end == null || typeof item.reason_end === 'string';
+                const isIpAddrValid = item.ip_addr == null || typeof item.ip_addr === 'string';
+                const isAudiobookTitleValid = item.audiobook_title == null || typeof item.audiobook_title === 'string';
+                const isEpisodeNameValid = item.episode_name == null || typeof item.episode_name === 'string';
+                const isEpisodeShowNameValid = item.episode_show_name == null || typeof item.episode_show_name === 'string';
 
-                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid) {
+                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid && isReasonEndValid && isIpAddrValid && isAudiobookTitleValid && isEpisodeNameValid && isEpisodeShowNameValid) {
                     rawEvents.push(item);
                 }
             }
