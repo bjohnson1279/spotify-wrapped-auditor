@@ -63,17 +63,24 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     // ⚡ Bolt: Pre-allocate array to avoid dynamic resizing overhead
     let deduped: SpotifyAudioEvent[] = new Array(rawEvents.length);
     let dedupedIdx = 0;
-    let prev: { e: SpotifyAudioEvent, startTime: number | null, endTime: number | null } | null = null;
+
+    // ⚡ Bolt: Decouple wrapper object strictly for loop processing into flat scalar variables
+    // to significantly reduce heap allocation and garbage collection overhead in the hot loop.
+    let prevE: SpotifyAudioEvent | null = null;
+    let prevStartTime: number | null = null;
+    let prevEndTime: number | null = null;
 
     // ⚡ Bolt: Replace for...of with a standard for-loop to avoid iterator overhead on large datasets
     for (let i = 0; i < rawEvents.length; i++) {
         const e = rawEvents[i];
-        if (!prev) {
-            prev = { e, startTime: null, endTime: null };
+        if (!prevE) {
+            prevE = e;
+            prevStartTime = null;
+            prevEndTime = null;
             continue;
         }
 
-        const sameTrack = prev.e.master_metadata_track_name === e.master_metadata_track_name;
+        const sameTrack = prevE.master_metadata_track_name === e.master_metadata_track_name;
 
         if (sameTrack) {
             // ⚡ Bolt: Defer Date.parse() execution until we have a track match.
@@ -81,42 +88,52 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             const currEndTime = Date.parse(e.ts);
             const currStartTime = currEndTime - e.ms_played;
 
-            if (prev.endTime === null) {
-                prev.endTime = Date.parse(prev.e.ts);
+            if (prevEndTime === null) {
+                prevEndTime = Date.parse(prevE.ts);
             }
 
-            const overlapMs = prev.endTime - currStartTime;
-            const gapMs = currStartTime - prev.endTime;
+            const overlapMs = prevEndTime - currStartTime;
+            const gapMs = currStartTime - prevEndTime;
 
             // Tier 1: Exact Metadata Clone (Potential multi-file overlap)
-            if (Math.abs(gapMs) < 10 && prev.e.ms_played === e.ms_played && prev.e.reason_end === e.reason_end) {
-                prev = { e, startTime: currStartTime, endTime: currEndTime };
+            if (Math.abs(gapMs) < 10 && prevE.ms_played === e.ms_played && prevE.reason_end === e.reason_end) {
+                prevE = e;
+                prevStartTime = currStartTime;
+                prevEndTime = currEndTime;
                 continue;
             }
 
             // Tier 2: Glitched Double Log (Different reason)
-            if (Math.abs(gapMs) < 1000 && prev.e.ms_played === e.ms_played && prev.e.reason_end !== e.reason_end) {
-                prev = { e, startTime: currStartTime, endTime: currEndTime };
+            if (Math.abs(gapMs) < 1000 && prevE.ms_played === e.ms_played && prevE.reason_end !== e.reason_end) {
+                prevE = e;
+                prevStartTime = currStartTime;
+                prevEndTime = currEndTime;
                 continue;
             }
 
             // Tier 3: Overlapping Plays
             if (overlapMs > 0) {
-                const isGlitch = prev.e.reason_end === 'trackdone' && e.reason_end === 'trackdone';
-                if (isGlitch && prev.e.ms_played > 30000 && prev.e.ms_played < 160000) {
-                    prev = { e, startTime: currStartTime, endTime: currEndTime };
+                const isGlitch = prevE.reason_end === 'trackdone' && e.reason_end === 'trackdone';
+                if (isGlitch && prevE.ms_played > 30000 && prevE.ms_played < 160000) {
+                    prevE = e;
+                    prevStartTime = currStartTime;
+                    prevEndTime = currEndTime;
                     continue;
                 }
             }
 
-            deduped[dedupedIdx++] = prev.e;
-            prev = { e, startTime: currStartTime, endTime: currEndTime };
+            deduped[dedupedIdx++] = prevE;
+            prevE = e;
+            prevStartTime = currStartTime;
+            prevEndTime = currEndTime;
         } else {
-            deduped[dedupedIdx++] = prev.e;
-            prev = { e, startTime: null, endTime: null };
+            deduped[dedupedIdx++] = prevE;
+            prevE = e;
+            prevStartTime = null;
+            prevEndTime = null;
         }
     }
-    if (prev) deduped[dedupedIdx++] = prev.e;
+    if (prevE) deduped[dedupedIdx++] = prevE;
 
     deduped.length = dedupedIdx;
     return deduped;
