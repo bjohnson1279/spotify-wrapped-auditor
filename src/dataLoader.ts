@@ -25,7 +25,10 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
         return isJson && f.includes(year.toString());
     });
 
-    let rawEvents: SpotifyAudioEvent[] = [];
+    // ⚡ Bolt: Pre-allocate initial size to reduce dynamic resizing
+    let rawEvents: SpotifyAudioEvent[] = new Array(100000);
+    let rawEventsIdx = 0;
+
     relevantFiles.forEach(file => {
         try {
             const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
@@ -36,29 +39,45 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 return;
             }
 
+            // ⚡ Bolt: Expand pre-allocated array if needed to fit incoming data
+            const parsedLen = parsed.length;
+            if (rawEventsIdx + parsedLen > rawEvents.length) {
+                rawEvents.length = rawEventsIdx + parsedLen;
+            }
+
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
-            for (let i = 0; i < parsed.length; i++) {
+            // ⚡ Bolt: Replaced compound boolean condition with fast-fail local checks to skip expensive lookups on invalid data
+            for (let i = 0; i < parsedLen; i++) {
                 const item = parsed[i];
 
-                // Validate string boundaries for DoS prevention
-                const isTsValid = typeof item.ts === 'string' && item.ts.length <= 50;
-                const isTrackValid = item.master_metadata_track_name == null || (typeof item.master_metadata_track_name === 'string' && item.master_metadata_track_name.length <= 1000);
-                const isArtistValid = item.master_metadata_album_artist_name == null || (typeof item.master_metadata_album_artist_name === 'string' && item.master_metadata_album_artist_name.length <= 1000);
-                const isReasonEndValid = item.reason_end == null || typeof item.reason_end === 'string';
-                const isIpAddrValid = item.ip_addr == null || typeof item.ip_addr === 'string';
-                const isAudiobookTitleValid = item.audiobook_title == null || typeof item.audiobook_title === 'string';
-                const isEpisodeNameValid = item.episode_name == null || typeof item.episode_name === 'string';
-                const isEpisodeShowNameValid = item.episode_show_name == null || typeof item.episode_show_name === 'string';
+                if (!item || typeof item !== 'object') continue;
+                if (typeof item.ts !== 'string' || item.ts.length > 50) continue;
+                if (typeof item.ms_played !== 'number' || !Number.isFinite(item.ms_played) || item.ms_played < 0) continue;
 
-                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid && isReasonEndValid && isIpAddrValid && isAudiobookTitleValid && isEpisodeNameValid && isEpisodeShowNameValid) {
-                    rawEvents.push(item);
-                }
+                // Direct check of optional string fields to avoid multiple type lookups
+                const track = item.master_metadata_track_name;
+                if (track != null && (typeof track !== 'string' || track.length > 1000)) continue;
+
+                const artist = item.master_metadata_album_artist_name;
+                if (artist != null && (typeof artist !== 'string' || artist.length > 1000)) continue;
+
+                if (item.reason_end != null && typeof item.reason_end !== 'string') continue;
+                if (item.ip_addr != null && typeof item.ip_addr !== 'string') continue;
+                if (item.audiobook_title != null && typeof item.audiobook_title !== 'string') continue;
+                if (item.episode_name != null && typeof item.episode_name !== 'string') continue;
+                if (item.episode_show_name != null && typeof item.episode_show_name !== 'string') continue;
+
+                // ⚡ Bolt: Use pre-allocated array indexing instead of .push() to prevent array resizing overhead
+                rawEvents[rawEventsIdx++] = item;
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }
     });
+
+    // Trim array to exact bounds
+    rawEvents.length = rawEventsIdx;
 
     // Sort by timestamp
     // ISO 8601 strings can be sorted lexicographically, much faster than parsing to Date
