@@ -42,3 +42,6 @@
 ## 2026-09-29 - Surgical Optimization Edits and No Scratch Script Commits
 **Learning:** Running whole-file formatters or regenerating entire components while performing performance optimizations introduces massive whitespace/formatting diffs (1,000+ lines), masking the real optimization, invalidating git blame, and causing painful merge conflicts with concurrent PRs. Additionally, committing scratch benchmark or patch scripts (`patch_*.py`, `test.cjs`) pollutes production repositories and triggers CI guardrail failures.
 **Action:** Restrict all algorithmic and performance optimizations to strictly scoped replacement chunks. Diff size must reflect only the functional optimization. Always clean up temporary benchmark or patch scripts with `git rm -f` before committing.
+## 2023-10-27 - Fast-fail validation in hot loops
+**Learning:** When validating large payloads inside hot loops (like processing huge JSON arrays), checking multiple conditions in a single massive `if` statement forces the JavaScript engine to evaluate properties on potentially malformed objects, leading to unnecessary allocations and garbage collection overhead.
+**Action:** Use multiple single-line `if (!condition) continue;` statements to short-circuit and 'fast-fail'. This prevents subsequent property lookups and keeps loop execution leaner and faster.

@@ -41,19 +41,20 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
 
-                // Validate string boundaries for DoS prevention
-                const isTsValid = typeof item.ts === 'string' && item.ts.length <= 50;
-                const isTrackValid = item.master_metadata_track_name == null || (typeof item.master_metadata_track_name === 'string' && item.master_metadata_track_name.length <= 1000);
-                const isArtistValid = item.master_metadata_album_artist_name == null || (typeof item.master_metadata_album_artist_name === 'string' && item.master_metadata_album_artist_name.length <= 1000);
-                const isReasonEndValid = item.reason_end == null || typeof item.reason_end === 'string';
-                const isIpAddrValid = item.ip_addr == null || typeof item.ip_addr === 'string';
-                const isAudiobookTitleValid = item.audiobook_title == null || typeof item.audiobook_title === 'string';
-                const isEpisodeNameValid = item.episode_name == null || typeof item.episode_name === 'string';
-                const isEpisodeShowNameValid = item.episode_show_name == null || typeof item.episode_show_name === 'string';
+                // ⚡ Bolt: Fast-fail validation using multiple single-line if statements
+                // This short-circuits early and avoids unnecessary object property lookups and variable allocations
+                if (!item || typeof item !== 'object') continue;
+                if (typeof item.ts !== 'string' || item.ts.length > 50) continue;
+                if (typeof item.ms_played !== 'number' || !Number.isFinite(item.ms_played) || item.ms_played < 0) continue;
+                if (item.master_metadata_track_name != null && (typeof item.master_metadata_track_name !== 'string' || item.master_metadata_track_name.length > 1000)) continue;
+                if (item.master_metadata_album_artist_name != null && (typeof item.master_metadata_album_artist_name !== 'string' || item.master_metadata_album_artist_name.length > 1000)) continue;
+                if (item.reason_end != null && typeof item.reason_end !== 'string') continue;
+                if (item.ip_addr != null && typeof item.ip_addr !== 'string') continue;
+                if (item.audiobook_title != null && typeof item.audiobook_title !== 'string') continue;
+                if (item.episode_name != null && typeof item.episode_name !== 'string') continue;
+                if (item.episode_show_name != null && typeof item.episode_show_name !== 'string') continue;
 
-                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid && isReasonEndValid && isIpAddrValid && isAudiobookTitleValid && isEpisodeNameValid && isEpisodeShowNameValid) {
-                    rawEvents.push(item);
-                }
+                rawEvents.push(item);
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
