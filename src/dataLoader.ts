@@ -41,17 +41,17 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
 
-                // ⚡ Bolt: Fast-fail validation to avoid massive compound boolean evaluation and redundant property lookups
+                // ⚡ Bolt & 🛡️ Sentinel: Fast-fail validation with strict length boundaries
                 if (!item || typeof item !== 'object') continue;
                 if (typeof item.ts !== 'string' || item.ts.length > 50) continue;
                 if (typeof item.ms_played !== 'number' || !Number.isFinite(item.ms_played) || item.ms_played < 0) continue;
                 if (item.master_metadata_track_name != null && (typeof item.master_metadata_track_name !== 'string' || item.master_metadata_track_name.length > 1000)) continue;
                 if (item.master_metadata_album_artist_name != null && (typeof item.master_metadata_album_artist_name !== 'string' || item.master_metadata_album_artist_name.length > 1000)) continue;
-                if (item.reason_end != null && typeof item.reason_end !== 'string') continue;
-                if (item.ip_addr != null && typeof item.ip_addr !== 'string') continue;
-                if (item.audiobook_title != null && typeof item.audiobook_title !== 'string') continue;
-                if (item.episode_name != null && typeof item.episode_name !== 'string') continue;
-                if (item.episode_show_name != null && typeof item.episode_show_name !== 'string') continue;
+                if (item.reason_end != null && (typeof item.reason_end !== 'string' || item.reason_end.length > 500)) continue;
+                if (item.ip_addr != null && (typeof item.ip_addr !== 'string' || item.ip_addr.length > 500)) continue;
+                if (item.audiobook_title != null && (typeof item.audiobook_title !== 'string' || item.audiobook_title.length > 1000)) continue;
+                if (item.episode_name != null && (typeof item.episode_name !== 'string' || item.episode_name.length > 1000)) continue;
+                if (item.episode_show_name != null && (typeof item.episode_show_name !== 'string' || item.episode_show_name.length > 1000)) continue;
 
                 rawEvents.push(item);
             }
