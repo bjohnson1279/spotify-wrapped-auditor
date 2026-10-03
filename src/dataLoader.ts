@@ -38,22 +38,24 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
+            // ⚡ Bolt: Fast-fail validation early using multiple if statements with continue
+            // This prevents unnecessary object property lookups and garbage collection overhead compared to a single massive boolean statement
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
 
-                // Validate string boundaries for DoS prevention
-                const isTsValid = typeof item.ts === 'string' && item.ts.length <= 50;
-                const isTrackValid = item.master_metadata_track_name == null || (typeof item.master_metadata_track_name === 'string' && item.master_metadata_track_name.length <= 1000);
-                const isArtistValid = item.master_metadata_album_artist_name == null || (typeof item.master_metadata_album_artist_name === 'string' && item.master_metadata_album_artist_name.length <= 1000);
-                const isReasonEndValid = item.reason_end == null || (typeof item.reason_end === 'string' && item.reason_end.length <= 500);
-                const isIpAddrValid = item.ip_addr == null || (typeof item.ip_addr === 'string' && item.ip_addr.length <= 500);
-                const isAudiobookTitleValid = item.audiobook_title == null || (typeof item.audiobook_title === 'string' && item.audiobook_title.length <= 1000);
-                const isEpisodeNameValid = item.episode_name == null || (typeof item.episode_name === 'string' && item.episode_name.length <= 1000);
-                const isEpisodeShowNameValid = item.episode_show_name == null || (typeof item.episode_show_name === 'string' && item.episode_show_name.length <= 1000);
+                // Validate string boundaries for DoS prevention and fail early
+                if (!item || typeof item !== 'object') continue;
+                if (typeof item.ts !== 'string' || item.ts.length > 50) continue;
+                if (typeof item.ms_played !== 'number' || !Number.isFinite(item.ms_played) || item.ms_played < 0) continue;
+                if (item.master_metadata_track_name != null && (typeof item.master_metadata_track_name !== 'string' || item.master_metadata_track_name.length > 1000)) continue;
+                if (item.master_metadata_album_artist_name != null && (typeof item.master_metadata_album_artist_name !== 'string' || item.master_metadata_album_artist_name.length > 1000)) continue;
+                if (item.reason_end != null && (typeof item.reason_end !== 'string' || item.reason_end.length > 500)) continue;
+                if (item.ip_addr != null && (typeof item.ip_addr !== 'string' || item.ip_addr.length > 500)) continue;
+                if (item.audiobook_title != null && (typeof item.audiobook_title !== 'string' || item.audiobook_title.length > 1000)) continue;
+                if (item.episode_name != null && (typeof item.episode_name !== 'string' || item.episode_name.length > 1000)) continue;
+                if (item.episode_show_name != null && (typeof item.episode_show_name !== 'string' || item.episode_show_name.length > 1000)) continue;
 
-                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid && isReasonEndValid && isIpAddrValid && isAudiobookTitleValid && isEpisodeNameValid && isEpisodeShowNameValid) {
-                    rawEvents.push(item);
-                }
+                rawEvents.push(item);
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
