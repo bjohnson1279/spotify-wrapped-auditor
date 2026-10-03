@@ -40,6 +40,7 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
+                if (!item || typeof item !== 'object') continue;
 
                 // Validate string boundaries for DoS prevention
                 const isTsValid = typeof item.ts === 'string' && item.ts.length <= 50;
@@ -51,7 +52,18 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 const isEpisodeNameValid = item.episode_name == null || (typeof item.episode_name === 'string' && item.episode_name.length <= 1000);
                 const isEpisodeShowNameValid = item.episode_show_name == null || (typeof item.episode_show_name === 'string' && item.episode_show_name.length <= 1000);
 
-                if (item && typeof item === 'object' && isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid && isReasonEndValid && isIpAddrValid && isAudiobookTitleValid && isEpisodeNameValid && isEpisodeShowNameValid) {
+                // Check *all* keys for extreme string lengths to prevent OOM
+                let hasHugeString = false;
+                for (const key in item) {
+                    if (typeof item[key] === 'string' && item[key].length > 5000) {
+                        hasHugeString = true;
+                        break;
+                    }
+                }
+
+                if (hasHugeString) continue;
+
+                if (isTsValid && typeof item.ms_played === 'number' && Number.isFinite(item.ms_played) && item.ms_played >= 0 && isTrackValid && isArtistValid && isReasonEndValid && isIpAddrValid && isAudiobookTitleValid && isEpisodeNameValid && isEpisodeShowNameValid) {
                     rawEvents.push(item);
                 }
             }
