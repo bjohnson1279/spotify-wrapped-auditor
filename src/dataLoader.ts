@@ -54,16 +54,22 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 if (item.episode_name != null && (typeof item.episode_name !== 'string' || item.episode_name.length > 1000)) continue;
                 if (item.episode_show_name != null && (typeof item.episode_show_name !== 'string' || item.episode_show_name.length > 1000)) continue;
 
-                // Check *all* keys for extreme string lengths to prevent OOM
-                let hasHugeString = false;
+                // Check *all* keys for extreme string lengths or unexpected complex types to prevent OOM
+                let isMalicious = false;
                 for (const key in item) {
-                    if (typeof item[key] === 'string' && item[key].length > 5000) {
-                        hasHugeString = true;
+                    const val = item[key];
+                    if (typeof val === 'string' && val.length > 5000) {
+                        isMalicious = true;
+                        break;
+                    }
+                    // Reject arrays and nested objects to prevent deep OOM and type confusion
+                    if (val !== null && typeof val === 'object') {
+                        isMalicious = true;
                         break;
                     }
                 }
 
-                if (hasHugeString) continue;
+                if (isMalicious) continue;
 
                 rawEvents.push(item);
             }
