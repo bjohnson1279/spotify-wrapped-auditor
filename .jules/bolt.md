@@ -45,3 +45,7 @@
 ## 2025-02-12 - Fast-fail short-circuiting for large data parsing
 **Learning:** When validating large datasets (e.g., raw JSON exports containing hundreds of thousands of events), evaluating massive single-statement compound boolean conditions in hot loops wastes CPU cycles because all conditions are checked and property lookups occur even if earlier ones would have invalidated the record.
 **Action:** Replace single large `if` statements containing many boolean checks with multiple single-line `if` statements using `continue` to 'fast-fail' validation early and reduce property lookups and garbage collection overhead.
+
+## 2025-10-25 - Avoid Array.prototype.push in Hot Loops for Large Arrays
+**Learning:** When parsing massive JSON arrays iteratively, using `Array.prototype.push` causes significant overhead because V8 needs to constantly reallocate and grow the underlying array buffer.
+**Action:** When the size of the array is known, preallocate the array size using `arr.length += newElements.length` (or `new Array()`) and assign items manually via index tracking `arr[idx++] = item`.
