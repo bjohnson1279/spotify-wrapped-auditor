@@ -105,3 +105,8 @@
 **Vulnerability:** The data loader strictly checked top-level string properties for extreme lengths (`length > 5000`) to prevent Out-Of-Memory (OOM) crashes, but it failed to validate the structure type itself. An attacker could bypass the string length check by supplying deeply nested objects (e.g., `{"a": {"b": ... }}`) or arrays containing massive strings, leading to memory exhaustion or extreme CPU overhead during garbage collection and JSON serialization later on.
 **Learning:** Checking primitive lengths (like strings) is insufficient if the data structure itself allows nested complexity. For simple, flat datasets (like Spotify exports), any non-primitive nested structure (object or array) is inherently unexpected and dangerous.
 **Prevention:** Always validate both the type and the content. For flat payloads, explicitly reject unexpected nested objects or arrays (`typeof val === 'object' && val !== null`) during the initial parsing phase to prevent deep parsing OOMs and type confusion vulnerabilities.
+
+## 2026-10-18 - Memory Exhaustion via Unbounded File Size Reads
+**Vulnerability:** `fs.readFileSync` was used to read untrusted JSON files from the `data/` directory directly into memory without checking their file size first. An attacker or a corrupted export process could provide a massive file (e.g., several gigabytes), causing the application to crash due to Out-Of-Memory (OOM) errors, leading to a Denial of Service (DoS).
+**Learning:** Reading user-supplied files entirely into memory is dangerous if there is no upper bound on the file size.
+**Prevention:** Always check `fs.statSync(file).size` against a sensible maximum (e.g., 256MB) before attempting to read the file into memory using `fs.readFileSync`.
