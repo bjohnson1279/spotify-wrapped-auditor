@@ -43,13 +43,16 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             const candidate = deduped[j];
             if (candidate.master_metadata_track_name === currTrack && candidate.master_metadata_album_artist_name === currArtist) {
                 nextSameTrack = candidate;
-                if (tsTime === null) tsTime = Date.parse(e.ts);
-                gapToNextSame = Math.abs(Date.parse(candidate.ts) - tsTime);
                 break;
             }
         }
 
+        // ⚡ Bolt: Defer Date.parse() execution until we know the candidate qualifies (>30s play).
+        // Avoids expensive string-to-date parsing inside the lookahead loop for short skips/glitches.
         if (nextSameTrack && nextSameTrack.ms_played >= 30000) {
+            if (tsTime === null) tsTime = Date.parse(e.ts);
+            gapToNextSame = Math.abs(Date.parse(nextSameTrack.ts) - tsTime);
+
             if (e.reason_end !== 'remote' && e.reason_end !== 'trackdone') {
                 const glitchWindow = isIPv4 ? 150000 : 120000;
                 if (gapToNextSame < glitchWindow && e.ms_played < 150000) continue;

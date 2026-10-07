@@ -55,3 +55,6 @@
 - **Zero Scratch File Commits**: Never stage or commit ad-hoc verification, patch, or debug scripts (`test.cjs`, `fix_*.cjs`, `fix_*.php`, `patch_*.py`, `patch_*.sh`, `scratch_*`). Execute checks via the project's native test commands (`npm test`, `pytest`, `phpunit`, etc.) and delete temporary scripts before creating git commits.
 - **Never Weaken CI Workflows**: Do not modify `.github/workflows/**` to bypass failures (e.g. adding `|| true`, setting `continue-on-error: true`, or commenting out assertions). Always resolve the defect in the source code or test fixture.
 - **Explicit Parameter & Variable Types**: In TypeScript files, avoid implicit `any` by always providing explicit types on functions, parameters, and arrow callbacks (e.g. `(id: string) => ...`). Verify zero type errors with `tsc --noEmit` before committing.
+## 2025-10-25 - Defer Date.parse() execution in lookahead loops
+**Learning:** Executing `Date.parse()` on ISO timestamps inside nested lookahead loops (e.g., searching for track duplicates) wastes significant CPU cycles when the track match is ultimately rejected by subsequent filter criteria (e.g., minimum ms_played thresholds).
+**Action:** Move `Date.parse()` evaluations out of inner search loops and defer them strictly to code blocks that execute only after the candidate matches all necessary validation criteria.
