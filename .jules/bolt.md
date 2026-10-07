@@ -45,3 +45,7 @@
 ## 2025-02-12 - Fast-fail short-circuiting for large data parsing
 **Learning:** When validating large datasets (e.g., raw JSON exports containing hundreds of thousands of events), evaluating massive single-statement compound boolean conditions in hot loops wastes CPU cycles because all conditions are checked and property lookups occur even if earlier ones would have invalidated the record.
 **Action:** Replace single large `if` statements containing many boolean checks with multiple single-line `if` statements using `continue` to 'fast-fail' validation early and reduce property lookups and garbage collection overhead.
+
+## 2023-10-27 - Early termination in chronological filtering
+**Learning:** When iterating over chronologically sorted arrays (like Spotify events sorted by timestamp) to filter by a date range, evaluating the upper boundary with `continue` forces a full O(N) array scan even after the relevant timeframe has passed.
+**Action:** Use an early exit (`break`) instead of `continue` once the item's timestamp exceeds the upper boundary. This short-circuits the loop, saving significant execution time on large datasets by turning an O(N) scan into an operation bounded by the target timeframe.
