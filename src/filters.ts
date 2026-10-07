@@ -20,7 +20,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
     for (let index = 0; index < len; index++) {
         const e = deduped[index];
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
-        if (e.ts < startDateStr || e.ts > endDateStr) continue;
+        if (e.ts < startDateStr) continue;
+        if (e.ts > endDateStr) break; // Events are sorted chronologically, break early
         if (e.ms_played < config.MIN_MS_PLAYED) continue;
 
         // Handle unknown reason for short plays (likely glitches)
@@ -133,7 +134,8 @@ export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: Audit
     for (let i = 0; i < len; i++) {
         const e = deduped[i];
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
-        if (e.ts < startDateStr || e.ts > endDateStr) continue;
+        if (e.ts < startDateStr) continue;
+        if (e.ts > endDateStr) break; // Events are sorted chronologically, break early
         if (e.ms_played < config.MIN_MS_PLAYED) continue;
         if (e.audiobook_title) continue;
         result[resultIdx++] = e;
