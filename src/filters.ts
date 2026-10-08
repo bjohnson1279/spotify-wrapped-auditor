@@ -12,6 +12,11 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
     const endDateStr = config.END_DATE.toISOString();
     const homeIp = process.env.HOME_IP; // ⚡ Bolt: Cache process.env lookup outside the loop
 
+    // ⚡ Bolt: Pre-calculate end date string boundaries to avoid parsing overhead
+    const endMonthStr = (config.END_DATE.getUTCMonth() + 1).toString().padStart(2, '0');
+    const endDayStr = config.END_DATE.getUTCDate().toString().padStart(2, '0');
+    const endMonthDayStr = `${endMonthStr}-${endDayStr}`;
+
     const len = deduped.length;
     // ⚡ Bolt: Pre-allocate array instead of using .push() to eliminate dynamic resizing overhead
     const result: SpotifyAudioEvent[] = new Array(len);
@@ -57,13 +62,13 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             if (gapToNextSame < 210000 && e.ms_played > 300000 && e.reason_end !== 'trackdone') continue;
         }
 
-        // Delay Date parsing until absolutely necessary
-        let lazyTsDate: Date | null = null;
+        // ⚡ Bolt: Defer string parsing until absolutely necessary. Use fast substrings instead of new Date()
+        let lazyTsMonthDay: string | null = null;
 
         // RULE 2: BOUNDARY LOGOUT (IPv4 Final Day)
         if (e.reason_end === 'logout' && isIPv4) {
-            lazyTsDate = new Date(e.ts);
-            if (lazyTsDate.getUTCMonth() === config.END_DATE.getUTCMonth() && lazyTsDate.getUTCDate() === config.END_DATE.getUTCDate()) {
+            lazyTsMonthDay = e.ts.substring(5, 10);
+            if (lazyTsMonthDay === endMonthDayStr) {
                 continue;
             }
         }
@@ -104,8 +109,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 
             // 3.3: Late Year Logout Filter
             if (e.master_metadata_album_artist_name !== '311') {
-                if (!lazyTsDate) lazyTsDate = new Date(e.ts);
-                if (lazyTsDate.getUTCMonth() >= 7) {
+                if (!lazyTsMonthDay) lazyTsMonthDay = e.ts.substring(5, 10);
+                if (lazyTsMonthDay.substring(0, 2) >= '08') { // August is month 08 (0-indexed 7)
                     if (e.reason_end === 'logout' || (e.reason_end === 'endplay' && e.skipped)) {
                         if (e.ms_played < 50000) continue;
                     }

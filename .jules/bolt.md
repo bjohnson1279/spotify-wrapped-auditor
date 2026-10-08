@@ -55,3 +55,7 @@
 - **Zero Scratch File Commits**: Never stage or commit ad-hoc verification, patch, or debug scripts (`test.cjs`, `fix_*.cjs`, `fix_*.php`, `patch_*.py`, `patch_*.sh`, `scratch_*`). Execute checks via the project's native test commands (`npm test`, `pytest`, `phpunit`, etc.) and delete temporary scripts before creating git commits.
 - **Never Weaken CI Workflows**: Do not modify `.github/workflows/**` to bypass failures (e.g. adding `|| true`, setting `continue-on-error: true`, or commenting out assertions). Always resolve the defect in the source code or test fixture.
 - **Explicit Parameter & Variable Types**: In TypeScript files, avoid implicit `any` by always providing explicit types on functions, parameters, and arrow callbacks (e.g. `(id: string) => ...`). Verify zero type errors with `tsc --noEmit` before committing.
+
+## 2026-10-08 - Avoid new Date() inside hot loops
+**Learning:** Instantiating `new Date(ts)` to extract month and day boundaries from ISO 8601 strings inside massive hot loops introduces significant parsing overhead and heap garbage collection pressure.
+**Action:** Use fast string operations like `ts.substring(5, 10)` to extract and compare the `MM-DD` components directly from standard ISO date strings, bypassing Date object instantiation entirely.
