@@ -105,3 +105,13 @@
 **Vulnerability:** The data loader strictly checked top-level string properties for extreme lengths (`length > 5000`) to prevent Out-Of-Memory (OOM) crashes, but it failed to validate the structure type itself. An attacker could bypass the string length check by supplying deeply nested objects (e.g., `{"a": {"b": ... }}`) or arrays containing massive strings, leading to memory exhaustion or extreme CPU overhead during garbage collection and JSON serialization later on.
 **Learning:** Checking primitive lengths (like strings) is insufficient if the data structure itself allows nested complexity. For simple, flat datasets (like Spotify exports), any non-primitive nested structure (object or array) is inherently unexpected and dangerous.
 **Prevention:** Always validate both the type and the content. For flat payloads, explicitly reject unexpected nested objects or arrays (`typeof val === 'object' && val !== null`) during the initial parsing phase to prevent deep parsing OOMs and type confusion vulnerabilities.
+
+## Additive Documentation & Scratch Cleanliness Directives
+- **Strictly Additive Journal Updates**: When updating `.jules/*.md`, strictly append new dated entries (`## YYYY-MM-DD - Title`). NEVER delete, truncate, or overwrite historical learnings or previous entries.
+- **Substantive Code Diff Requirement**: Pull requests must include substantive code changes in `src/`, `app/`, `lib/`, or `tests/`. Never open PRs that modify only `.jules/*.md` journals or root scratch scripts.
+- **Zero Scratch File Commits**: Never commit `*.diff`, `*.patch`, `test_*.ts`, `test_*.js`, `test.cjs`, `fix_*.php`, or `patch_*.py` files. Always remove temporary debugging or verification scripts prior to committing.
+
+## Scope Quarantine, Journaling & Security Test Invariants
+- **Strictly Append-Only Journaling**: When adding learnings to `.jules/*.md`, append strictly at the end of the file. Do not rewrite, deduplicate, or remove lines beginning with `## YYYY-MM-DD`.
+- **Surgical Scope Quarantine**: Modify only the files directly involved in the issue and their corresponding test fixtures. Do not delete, rename, or perform drive-by cleanups of unrelated root-level scripts or legacy files.
+- **Coupled Test Fixture Awareness for Security Invariants**: When changing fail-open fallback behavior (such as hardening decryption to fail closed), always update upstream test mocks that rely on plaintext credentials or mock values.
