@@ -26,7 +26,6 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     });
 
     let rawEvents: SpotifyAudioEvent[] = [];
-    let rawEventsLen = 0;
     // 🛡️ Sentinel: Max file size (256 MB) to prevent OOM
     const MAX_FILE_SIZE = 256 * 1024 * 1024;
 
@@ -48,9 +47,6 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Expected an array but received a different JSON structure.`);
                 return;
             }
-
-            // ⚡ Bolt: Pre-allocate space in the global array to prevent dynamic resizing overhead
-            rawEvents.length += parsed.length;
 
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
@@ -87,16 +83,13 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
                 if (isMalicious) continue;
 
-                // ⚡ Bolt: Fast manual index assignment instead of Array.prototype.push
-                rawEvents[rawEventsLen++] = item;
+                // ⚡ Bolt: V8 handles Array.prototype.push better than transitioning to a HOLEY elements kind
+                rawEvents.push(item);
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }
     });
-
-    // Trim array to actual used length
-    rawEvents.length = rawEventsLen;
 
     // Sort by timestamp
     // ISO 8601 strings can be sorted lexicographically, much faster than parsing to Date

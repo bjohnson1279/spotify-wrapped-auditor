@@ -69,3 +69,7 @@
 - **Strictly Append-Only Journaling**: When adding learnings to `.jules/*.md`, append strictly at the end of the file. Do not rewrite, deduplicate, or remove lines beginning with `## YYYY-MM-DD`.
 - **Surgical Scope Quarantine**: Modify only the files directly involved in the issue and their corresponding test fixtures. Do not delete, rename, or perform drive-by cleanups of unrelated root-level scripts or legacy files.
 - **Coupled Test Fixture Awareness for Security Invariants**: When changing fail-open fallback behavior (such as hardening decryption to fail closed), always update upstream test mocks that rely on plaintext credentials or mock values.
+
+## 2023-10-27 - Avoid progressively pre-allocating array lengths in V8
+**Learning:** While pre-allocating arrays with `new Array(knownLength)` is fast, NEVER progressively expand an existing array's length (`arr.length += chunkLength`) to pre-allocate space for concatenated chunks in hot loops. This transitions the V8 array to a slow HOLEY_ELEMENTS kind (dict mode) and penalizes subsequent assignments and iterations.
+**Action:** For iteratively merging chunks or dynamically adding elements inside a loop, standard `Array.prototype.push()` is significantly faster and maintains a PACKED_ELEMENTS array. Use `.push()` instead of manual indexing and progressive length adjustments.
