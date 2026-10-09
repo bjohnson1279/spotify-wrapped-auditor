@@ -22,6 +22,10 @@
 **Learning:** When iterating over chronologically sorted arrays (like Spotify events sorted by timestamp) to filter by a date range, evaluating the upper boundary with `continue` forces a full O(N) array scan even after the relevant timeframe has passed.
 **Action:** Use an early exit (`break`) instead of `continue` once the item's timestamp exceeds the upper boundary. This short-circuits the loop, saving significant execution time on large datasets by turning an O(N) scan into an operation bounded by the target timeframe.
 
+## 2026-10-08 - Avoid new Date() inside hot loops
+**Learning:** Instantiating `new Date(ts)` to extract month and day boundaries from ISO 8601 strings inside massive hot loops introduces significant parsing overhead and heap garbage collection pressure.
+**Action:** Use fast string operations like `ts.substring(5, 10)` to extract and compare the `MM-DD` components directly from standard ISO date strings, bypassing Date object instantiation entirely.
+
 ## Prevention Directives for Automated Refactoring
 - **Never Overwrite Complete Files**: Always use range-scoped replacement chunks for edits to `schema.prisma`, `index.ts`, `public/index.php`, `db/schema.rb`, or DDL SQL scripts.
 - **Do Not Remove Core Declarations**: Do not delete existing route registrations or database DDL tables.
