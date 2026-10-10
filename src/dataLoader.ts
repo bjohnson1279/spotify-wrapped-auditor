@@ -28,7 +28,18 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
         try {
-            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+            const filePath = path.join(dataDir, file);
+
+            // 🛡️ Sentinel: Enforce maximum file size limit (100MB) to prevent V8 Heap Out-Of-Memory (DoS)
+            // JSON parsing memory overhead is 3x-5x, so 100MB limits heap impact to safe bounds
+            const stats = fs.statSync(filePath);
+            const MAX_FILE_SIZE = 100 * 1024 * 1024;
+            if (stats.size > MAX_FILE_SIZE) {
+                console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds 100MB limit.`);
+                return;
+            }
+
+            const raw = fs.readFileSync(filePath, 'utf-8');
             const parsed = JSON.parse(raw);
 
             if (!Array.isArray(parsed)) {
