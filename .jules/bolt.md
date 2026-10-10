@@ -45,3 +45,6 @@
 ## 2025-02-12 - Fast-fail short-circuiting for large data parsing
 **Learning:** When validating large datasets (e.g., raw JSON exports containing hundreds of thousands of events), evaluating massive single-statement compound boolean conditions in hot loops wastes CPU cycles because all conditions are checked and property lookups occur even if earlier ones would have invalidated the record.
 **Action:** Replace single large `if` statements containing many boolean checks with multiple single-line `if` statements using `continue` to 'fast-fail' validation early and reduce property lookups and garbage collection overhead.
+## 2025-02-12 - Value lookup caching in hot loops
+**Learning:** Inside hot loops using `for...in` (e.g., iterating object properties during validation), performing repeated property access evaluations like `typeof item[key] === 'string' && item[key].length > 5000` forces V8 to repeatedly look up the property.
+**Action:** Explicitly cache object property lookups into a local variable (e.g., `const val = item[key];`) before performing consecutive type or length checks on that value to prevent redundant evaluations and yield measurable speedups on large datasets.

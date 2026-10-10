@@ -57,7 +57,9 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 // Check *all* keys for extreme string lengths to prevent OOM
                 let hasHugeString = false;
                 for (const key in item) {
-                    if (typeof item[key] === 'string' && item[key].length > 5000) {
+                    // ⚡ Bolt: Cache property lookup inside hot loop
+                    const val = item[key];
+                    if (typeof val === 'string' && val.length > 5000) {
                         hasHugeString = true;
                         break;
                     }
