@@ -119,3 +119,8 @@
 - **Strictly Append-Only Journaling**: When adding learnings to `.jules/*.md`, append strictly at the end of the file. Do not rewrite, deduplicate, or remove lines beginning with `## YYYY-MM-DD`.
 - **Surgical Scope Quarantine**: Modify only the files directly involved in the issue and their corresponding test fixtures. Do not delete, rename, or perform drive-by cleanups of unrelated root-level scripts or legacy files.
 - **Coupled Test Fixture Awareness for Security Invariants**: When changing fail-open fallback behavior (such as hardening decryption to fail closed), always update upstream test mocks that rely on plaintext credentials or mock values.
+
+## 2025-10-10 - Application Hang / Memory Exhaustion via Special Files
+**Vulnerability:** `fs.readFileSync` was used to read untrusted JSON files from the `data/` directory directly into memory. While there was a file size check (`stats.size > MAX_FILE_SIZE`), special files like named pipes (`mkfifo`) or character devices (`/dev/zero`) report a size of `0`, effectively bypassing this check. Reading these special files can cause the application to hang indefinitely or crash due to memory exhaustion (OOM), leading to a Denial of Service (DoS).
+**Learning:** Checking `stats.size` is insufficient to prevent DoS when reading files into memory if the file is a special device or pipe, as their reported size does not reflect the amount of data that can be read from them.
+**Prevention:** Always verify that the file being read is a regular file using `fs.statSync(file).isFile()` before attempting to read it into memory using `fs.readFileSync`.

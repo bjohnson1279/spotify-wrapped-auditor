@@ -35,6 +35,10 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
             // 🛡️ Sentinel: Validate file size before loading into memory
             const stats = fs.statSync(fullPath);
+            if (!stats.isFile()) {
+                console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Not a regular file (e.g., named pipe, device), preventing potential DoS.`);
+                return;
+            }
             if (stats.size > MAX_FILE_SIZE) {
                 console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds 256MB limit, preventing memory exhaustion.`);
                 return;
