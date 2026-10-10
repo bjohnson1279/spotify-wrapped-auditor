@@ -73,3 +73,7 @@
 ## 2023-10-27 - Avoid progressively pre-allocating array lengths in V8
 **Learning:** While pre-allocating arrays with `new Array(knownLength)` is fast, NEVER progressively expand an existing array's length (`arr.length += chunkLength`) to pre-allocate space for concatenated chunks in hot loops. This transitions the V8 array to a slow HOLEY_ELEMENTS kind (dict mode) and penalizes subsequent assignments and iterations.
 **Action:** For iteratively merging chunks or dynamically adding elements inside a loop, standard `Array.prototype.push()` is significantly faster and maintains a PACKED_ELEMENTS array. Use `.push()` instead of manual indexing and progressive length adjustments.
+
+## 2023-10-27 - Use Binary Search for Initial Boundary in Sorted Arrays
+**Learning:** When scanning chronologically sorted arrays to find a specific start boundary (e.g., filtering events after a certain date), starting with a linear scan (`if (ts < startDate) continue;`) wastes significant time iterating over irrelevant earlier data when the target date is deep into the array.
+**Action:** Implement a binary search (`O(log N)`) to find the first valid index, then begin the standard iterative filtering loop from that index, effectively skipping the initial out-of-bounds subset instantly.

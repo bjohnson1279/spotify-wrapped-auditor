@@ -22,10 +22,23 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
     const result: SpotifyAudioEvent[] = new Array(len);
     let resultIdx = 0;
 
-    for (let index = 0; index < len; index++) {
+    // ⚡ Bolt: Use binary search to find the starting index instead of a linear scan.
+    // This turns an O(N) scan into O(log N) for skipping initial out-of-bounds events.
+    let startIndex = len;
+    let l = 0, r = len - 1;
+    while (l <= r) {
+        const m = Math.floor((l + r) / 2);
+        if (deduped[m].ts >= startDateStr) {
+            startIndex = m;
+            r = m - 1;
+        } else {
+            l = m + 1;
+        }
+    }
+
+    for (let index = startIndex; index < len; index++) {
         const e = deduped[index];
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
-        if (e.ts < startDateStr) continue;
         if (e.ts > endDateStr) break; // Events are sorted chronologically, break early
         if (e.ms_played < config.MIN_MS_PLAYED) continue;
 
@@ -136,10 +149,22 @@ export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: Audit
     const result: SpotifyAudioEvent[] = new Array(len);
     let resultIdx = 0;
 
-    for (let i = 0; i < len; i++) {
+    // ⚡ Bolt: Use binary search to find the starting index instead of a linear scan.
+    let startIndex = len;
+    let l = 0, r = len - 1;
+    while (l <= r) {
+        const m = Math.floor((l + r) / 2);
+        if (deduped[m].ts >= startDateStr) {
+            startIndex = m;
+            r = m - 1;
+        } else {
+            l = m + 1;
+        }
+    }
+
+    for (let i = startIndex; i < len; i++) {
         const e = deduped[i];
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
-        if (e.ts < startDateStr) continue;
         if (e.ts > endDateStr) break; // Events are sorted chronologically, break early
         if (e.ms_played < config.MIN_MS_PLAYED) continue;
         if (e.audiobook_title) continue;
