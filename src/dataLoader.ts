@@ -28,7 +28,17 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let rawEvents: SpotifyAudioEvent[] = [];
     relevantFiles.forEach(file => {
         try {
-            const raw = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+            const filePath = path.join(dataDir, file);
+
+            // 🛡️ Sentinel: Enforce max file size to prevent OOM / Denial of Service
+            const stats = fs.statSync(filePath);
+            const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+            if (stats.size > MAX_FILE_SIZE) {
+                console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds the 100MB limit. This may be a malicious or corrupted export.`);
+                return;
+            }
+
+            const raw = fs.readFileSync(filePath, 'utf-8');
             const parsed = JSON.parse(raw);
 
             if (!Array.isArray(parsed)) {
