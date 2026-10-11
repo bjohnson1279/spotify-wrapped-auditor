@@ -124,3 +124,8 @@
 **Vulnerability:** `fs.readFileSync` was used to read untrusted JSON files from the `data/` directory directly into memory. While there was a file size check (`stats.size > MAX_FILE_SIZE`), special files like named pipes (`mkfifo`) or character devices (`/dev/zero`) report a size of `0`, effectively bypassing this check. Reading these special files can cause the application to hang indefinitely or crash due to memory exhaustion (OOM), leading to a Denial of Service (DoS).
 **Learning:** Checking `stats.size` is insufficient to prevent DoS when reading files into memory if the file is a special device or pipe, as their reported size does not reflect the amount of data that can be read from them.
 **Prevention:** Always verify that the file being read is a regular file using `fs.statSync(file).isFile()` before attempting to read it into memory using `fs.readFileSync`.
+
+## 2026-10-18 - Memory Exhaustion via Unbounded JSON Payload
+**Vulnerability:** The data loader read external JSON files into memory with `fs.readFileSync` based on a 256MB file size limit. Due to V8's JSON parsing overhead, a 256MB file can expand to >1.2GB in memory, which combined with other processing overhead risks exceeding the default Node.js heap limit (~1.4GB) and triggering an Out of Memory (OOM) Denial of Service crash.
+**Learning:** `JSON.parse` memory footprint is significantly larger than the raw file size. Relying on an arbitrarily high limit (like 256MB) does not account for this expansion overhead.
+**Prevention:** Strictly bound maximum allowed JSON file sizes to lower limits (e.g., 50MB) to ensure the parsed memory footprint comfortably remains within Node's heap limitations.
