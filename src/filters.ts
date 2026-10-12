@@ -1,4 +1,17 @@
 
+
+const parseISO = (s: string): number => {
+    // ⚡ Bolt: Fast inline parsing for YYYY-MM-DDTHH:mm:ssZ ISO strings
+    // Bypasses the significant overhead of V8's native Date.parse() in hot loops
+    const y = s.charCodeAt(0) * 1000 + s.charCodeAt(1) * 100 + s.charCodeAt(2) * 10 + s.charCodeAt(3) - 53328;
+    const m = s.charCodeAt(5) * 10 + s.charCodeAt(6) - 528;
+    const d = s.charCodeAt(8) * 10 + s.charCodeAt(9) - 528;
+    const h = s.charCodeAt(11) * 10 + s.charCodeAt(12) - 528;
+    const min = s.charCodeAt(14) * 10 + s.charCodeAt(15) - 528;
+    const sec = s.charCodeAt(17) * 10 + s.charCodeAt(18) - 528;
+    return Date.UTC(y, m - 1, d, h, min, sec);
+};
+
 import { SpotifyAudioEvent } from '../interface/SpotifyAudioEvent.js';
 
 export interface AuditConfig {
@@ -61,8 +74,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             const candidate = deduped[j];
             if (candidate.master_metadata_track_name === currTrack && candidate.master_metadata_album_artist_name === currArtist) {
                 nextSameTrack = candidate;
-                if (tsTime === null) tsTime = Date.parse(e.ts);
-                gapToNextSame = Math.abs(Date.parse(candidate.ts) - tsTime);
+                if (tsTime === null) tsTime = parseISO(e.ts);
+                gapToNextSame = Math.abs(parseISO(candidate.ts) - tsTime);
                 break;
             }
         }
@@ -94,7 +107,7 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             const isNextSame = nextTrack ? (nextTrack.master_metadata_track_name === currTrack && nextTrack.master_metadata_album_artist_name === currArtist) : false;
             const isPrevNextSame = (prevTrack && nextTrack) ? (prevTrack.master_metadata_track_name === nextTrack.master_metadata_track_name && prevTrack.master_metadata_album_artist_name === nextTrack.master_metadata_album_artist_name) : false;
 
-            // ⚡ Bolt: Defer Date.parse() execution until we actually need it for the gap comparisons
+            // ⚡ Bolt: Defer parseISO() execution until we actually need it for the gap comparisons
             let prevGap = Infinity;
             let nextGap = Infinity;
 
@@ -102,9 +115,9 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             if (e.reason_end !== 'trackdone' && e.master_metadata_album_artist_name !== '311') {
                 const neighbor = isPrevSame ? prevTrack : nextTrack;
                 if (neighbor && neighbor.ms_played >= 30000) {
-                    if (tsTime === null) tsTime = Date.parse(e.ts);
-                    if (isPrevSame && prevTrack) prevGap = Math.abs(tsTime - Date.parse(prevTrack.ts));
-                    if (isNextSame && nextTrack) nextGap = Math.abs(Date.parse(nextTrack.ts) - tsTime);
+                    if (tsTime === null) tsTime = parseISO(e.ts);
+                    if (isPrevSame && prevTrack) prevGap = Math.abs(tsTime - parseISO(prevTrack.ts));
+                    if (isNextSame && nextTrack) nextGap = Math.abs(parseISO(nextTrack.ts) - tsTime);
 
                     if ((isPrevSame && prevGap < 1800000) || (isNextSame && nextGap < 1800000)) {
                         continue;
@@ -114,8 +127,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 
             // Sandwich redundancy
             if (isPrevNextSame && e.reason_end !== 'trackdone') {
-                if (tsTime === null) tsTime = Date.parse(e.ts);
-                if (prevGap === Infinity && prevTrack) prevGap = Math.abs(tsTime - Date.parse(prevTrack.ts));
+                if (tsTime === null) tsTime = parseISO(e.ts);
+                if (prevGap === Infinity && prevTrack) prevGap = Math.abs(tsTime - parseISO(prevTrack.ts));
 
                 if (prevGap < 600000) continue;
             }
