@@ -47,18 +47,25 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
         try {
             const fullPath = path.join(dataDir, file);
 
-            // 🛡️ Sentinel: Validate file size before loading into memory
-            const stats = fs.statSync(fullPath);
-            if (!stats.isFile()) {
-                console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Not a regular file (e.g., named pipe, device), preventing potential DoS.`);
-                return;
-            }
-            if (stats.size > MAX_FILE_SIZE) {
-                console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds 50MB limit, preventing memory exhaustion.`);
-                return;
+            // 🛡️ Sentinel: Open file and validate atomically to prevent TOCTOU vulnerabilities
+            const fd = fs.openSync(fullPath, 'r');
+            let raw: string;
+            try {
+                const stats = fs.fstatSync(fd);
+                if (!stats.isFile()) {
+                    console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Not a regular file (e.g., named pipe, device), preventing potential DoS.`);
+                    return;
+                }
+                if (stats.size > MAX_FILE_SIZE) {
+                    console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds 50MB limit, preventing memory exhaustion.`);
+                    return;
+                }
+
+                raw = fs.readFileSync(fd, 'utf-8');
+            } finally {
+                fs.closeSync(fd);
             }
 
-            const raw = fs.readFileSync(fullPath, 'utf-8');
             const parsed = JSON.parse(raw);
 
             if (!Array.isArray(parsed)) {
