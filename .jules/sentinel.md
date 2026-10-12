@@ -129,3 +129,8 @@
 **Vulnerability:** The data loader read external JSON files into memory with `fs.readFileSync` based on a 256MB file size limit. Due to V8's JSON parsing overhead, a 256MB file can expand to >1.2GB in memory, which combined with other processing overhead risks exceeding the default Node.js heap limit (~1.4GB) and triggering an Out of Memory (OOM) Denial of Service crash.
 **Learning:** `JSON.parse` memory footprint is significantly larger than the raw file size. Relying on an arbitrarily high limit (like 256MB) does not account for this expansion overhead.
 **Prevention:** Strictly bound maximum allowed JSON file sizes to lower limits (e.g., 50MB) to ensure the parsed memory footprint comfortably remains within Node's heap limitations.
+
+## 2025-10-18 - TOCTOU (Time-Of-Check to Time-Of-Use) Vulnerability in File Loading
+**Vulnerability:** The data loader used `fs.statSync(path)` to validate file size and type, followed by `fs.readFileSync(path)` to actually read the contents. This creates a race condition window where a valid file could be swapped with a malicious payload (like a massive file or a named pipe) between the check and the read, bypassing the validations.
+**Learning:** Checking a file by path and then reading it by path is vulnerable to race conditions (TOCTOU).
+**Prevention:** Always open a file descriptor first using `fs.openSync(path, 'r')`. Then validate the file atomically using `fs.fstatSync(fd)` and read it using `fs.readFileSync(fd)` to guarantee you are checking and reading the exact same file handle. Ensure the file descriptor is closed properly in a `finally` block.
