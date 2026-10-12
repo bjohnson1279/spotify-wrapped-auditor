@@ -1,4 +1,17 @@
 
+
+const parseISO = (s: string): number => {
+    // ⚡ Bolt: Fast inline parsing for YYYY-MM-DDTHH:mm:ssZ ISO strings
+    // Bypasses the significant overhead of V8's native Date.parse() in hot loops
+    const y = s.charCodeAt(0) * 1000 + s.charCodeAt(1) * 100 + s.charCodeAt(2) * 10 + s.charCodeAt(3) - 53328;
+    const m = s.charCodeAt(5) * 10 + s.charCodeAt(6) - 528;
+    const d = s.charCodeAt(8) * 10 + s.charCodeAt(9) - 528;
+    const h = s.charCodeAt(11) * 10 + s.charCodeAt(12) - 528;
+    const min = s.charCodeAt(14) * 10 + s.charCodeAt(15) - 528;
+    const sec = s.charCodeAt(17) * 10 + s.charCodeAt(18) - 528;
+    return Date.UTC(y, m - 1, d, h, min, sec);
+};
+
 import * as fs from 'fs';
 import * as path from 'path';
 import { SpotifyAudioEvent } from '../interface/SpotifyAudioEvent.js';
@@ -124,13 +137,13 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
         const sameTrack = prevE.master_metadata_track_name === e.master_metadata_track_name;
 
         if (sameTrack) {
-            // ⚡ Bolt: Defer Date.parse() execution until we have a track match.
+            // ⚡ Bolt: Defer parseISO() execution until we have a track match.
             // Avoids parsing overhead for ~95% of events since most track changes aren't duplicates.
-            const currEndTime = Date.parse(e.ts);
+            const currEndTime = parseISO(e.ts);
             const currStartTime = currEndTime - e.ms_played;
 
             if (prevEndTime === null) {
-                prevEndTime = Date.parse(prevE.ts);
+                prevEndTime = parseISO(prevE.ts);
             }
 
             const overlapMs = prevEndTime - currStartTime;

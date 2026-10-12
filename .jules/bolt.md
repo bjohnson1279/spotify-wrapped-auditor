@@ -77,3 +77,7 @@
 ## 2023-10-27 - Use Binary Search for Initial Boundary in Sorted Arrays
 **Learning:** When scanning chronologically sorted arrays to find a specific start boundary (e.g., filtering events after a certain date), starting with a linear scan (`if (ts < startDate) continue;`) wastes significant time iterating over irrelevant earlier data when the target date is deep into the array.
 **Action:** Implement a binary search (`O(log N)`) to find the first valid index, then begin the standard iterative filtering loop from that index, effectively skipping the initial out-of-bounds subset instantly.
+
+## 2023-10-28 - Fast Custom ISO Date Parser in Hot Loops
+**Learning:** V8's native `Date.parse()` incurs significant overhead due to complex internal string parsing and fallback logic, especially when converting tens of thousands of ISO 8601 strings (`YYYY-MM-DDTHH:mm:ssZ`) to timestamps inside hot loops.
+**Action:** Replace `Date.parse(ts)` with a custom inline parser that uses `charCodeAt()` and mathematical conversions (e.g., `s.charCodeAt(0) * 1000 + ...`) combined with `Date.UTC()` to bypass native parsing overhead.
