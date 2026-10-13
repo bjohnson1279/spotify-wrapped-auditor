@@ -81,3 +81,7 @@
 ## 2023-10-28 - Fast Custom ISO Date Parser in Hot Loops
 **Learning:** V8's native `Date.parse()` incurs significant overhead due to complex internal string parsing and fallback logic, especially when converting tens of thousands of ISO 8601 strings (`YYYY-MM-DDTHH:mm:ssZ`) to timestamps inside hot loops.
 **Action:** Replace `Date.parse(ts)` with a custom inline parser that uses `charCodeAt()` and mathematical conversions (e.g., `s.charCodeAt(0) * 1000 + ...`) combined with `Date.UTC()` to bypass native parsing overhead.
+
+## 2025-06-15 - Fast Object Lookup for Aggregation
+**Learning:** In V8 (Node.js), standard string-keyed objects created with `Object.create(null)` are generally faster for inner hot loop property access and modifications than `Map` objects.
+**Action:** Prefer `Object.create(null)` for nested dynamic dictionaries in data aggregation loops to maximize inner loop speed while preventing prototype pollution.
