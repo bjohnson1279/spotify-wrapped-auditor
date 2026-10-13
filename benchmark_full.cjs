@@ -7,14 +7,14 @@ if (!fs.existsSync('data')) {
     fs.mkdirSync('data');
 }
 
-const numEvents = 500000;
+const numEvents = 200000;
 const events = [];
 for(let i=0; i<numEvents; i++) {
     events.push({
         ts: '2025-06-01T12:00:00Z',
         ms_played: 40000 + i,
-        master_metadata_track_name: 'Song ' + (i % 10),
-        master_metadata_album_artist_name: 'Artist',
+        master_metadata_track_name: 'Song ' + (i % 100),
+        master_metadata_album_artist_name: 'Artist ' + (i % 50),
         reason_end: 'trackdone'
     });
 }
