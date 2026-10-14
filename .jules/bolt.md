@@ -85,3 +85,7 @@
 ## 2025-06-15 - Fast Object Lookup for Aggregation
 **Learning:** In V8 (Node.js), standard string-keyed objects created with `Object.create(null)` are generally faster for inner hot loop property access and modifications than `Map` objects.
 **Action:** Prefer `Object.create(null)` for nested dynamic dictionaries in data aggregation loops to maximize inner loop speed while preventing prototype pollution.
+
+## 2025-02-12 - Cache typeof in hot object loops
+**Learning:** In V8 hot loops that iterate through unknown object properties and perform multiple conditional type checks (e.g. `typeof val === 'string'` and `typeof val === 'object'`), evaluating `typeof val` repeatedly incurs a micro-overhead.
+**Action:** Cache the result of `typeof` into a local variable (`const t = typeof val;`) to prevent redundant runtime type evaluations.

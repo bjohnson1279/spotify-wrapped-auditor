@@ -95,12 +95,15 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 let isMalicious = false;
                 for (const key in item) {
                     const val = item[key];
-                    if (typeof val === 'string' && val.length > 5000) {
-                        isMalicious = true;
-                        break;
-                    }
-                    // Reject arrays and nested objects to prevent deep OOM and type confusion
-                    if (val !== null && typeof val === 'object') {
+                    // ⚡ Bolt: Cache typeof evaluation to avoid redundant V8 type evaluations in the hot loop
+                    const t = typeof val;
+                    if (t === 'string') {
+                        if (val.length > 5000) {
+                            isMalicious = true;
+                            break;
+                        }
+                    } else if (val !== null && t === 'object') {
+                        // Reject arrays and nested objects to prevent deep OOM and type confusion
                         isMalicious = true;
                         break;
                     }
