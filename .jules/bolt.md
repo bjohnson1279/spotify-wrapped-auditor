@@ -89,3 +89,7 @@
 ## 2025-02-12 - Cache typeof in hot object loops
 **Learning:** In V8 hot loops that iterate through unknown object properties and perform multiple conditional type checks (e.g. `typeof val === 'string'` and `typeof val === 'object'`), evaluating `typeof val` repeatedly incurs a micro-overhead.
 **Action:** Cache the result of `typeof` into a local variable (`const t = typeof val;`) to prevent redundant runtime type evaluations.
+
+## 2026-10-16 - Fast-Fail Lookaheads
+**Learning:** In filtering loops that search ahead for split plays or glitches (e.g., RULE 1), performing the lookahead and date parsing for *every* event causes massive overhead.
+**Action:** When analyzing event sequences, fast-fail complex lookaheads and date parsing by first verifying the event did not end normally (`if (e.reason_end !== 'trackdone')`). Bypassing lookaheads for normal track completions provides significant speedups on massive datasets.

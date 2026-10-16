@@ -65,27 +65,32 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         const currArtist = e.master_metadata_album_artist_name;
 
         // RULE 1: UNIVERSAL GLITCH / SPLIT PLAY (Context-Aware)
-        let nextSameTrack: SpotifyAudioEvent | null = null;
-        let gapToNextSame = Infinity;
         let tsTime: number | null = null; // Lazy load numeric time
 
-        const loopMax = Math.min(index + 5, len);
-        for (let j = index + 1; j < loopMax; j++) {
-            const candidate = deduped[j];
-            if (candidate.master_metadata_track_name === currTrack && candidate.master_metadata_album_artist_name === currArtist) {
-                nextSameTrack = candidate;
-                if (tsTime === null) tsTime = parseISO(e.ts);
-                gapToNextSame = Math.abs(parseISO(candidate.ts) - tsTime);
-                break;
-            }
-        }
+        // ⚡ Bolt: fast-fail Rule 1 lookup if the track ended normally.
+        // Both conditions inside require e.reason_end !== 'trackdone', so we can skip the loop entirely.
+        if (e.reason_end !== 'trackdone') {
+            let nextSameTrack: SpotifyAudioEvent | null = null;
+            let gapToNextSame = Infinity;
 
-        if (nextSameTrack && nextSameTrack.ms_played >= 30000) {
-            if (e.reason_end !== 'remote' && e.reason_end !== 'trackdone') {
-                const glitchWindow = isIPv4 ? 150000 : 120000;
-                if (gapToNextSame < glitchWindow && e.ms_played < 150000) continue;
+            const loopMax = Math.min(index + 5, len);
+            for (let j = index + 1; j < loopMax; j++) {
+                const candidate = deduped[j];
+                if (candidate.master_metadata_track_name === currTrack && candidate.master_metadata_album_artist_name === currArtist) {
+                    nextSameTrack = candidate;
+                    if (tsTime === null) tsTime = parseISO(e.ts);
+                    gapToNextSame = Math.abs(parseISO(candidate.ts) - tsTime);
+                    break;
+                }
             }
-            if (gapToNextSame < 210000 && e.ms_played > 300000 && e.reason_end !== 'trackdone') continue;
+
+            if (nextSameTrack && nextSameTrack.ms_played >= 30000) {
+                if (e.reason_end !== 'remote') {
+                    const glitchWindow = isIPv4 ? 150000 : 120000;
+                    if (gapToNextSame < glitchWindow && e.ms_played < 150000) continue;
+                }
+                if (gapToNextSame < 210000 && e.ms_played > 300000) continue;
+            }
         }
 
         // ⚡ Bolt: Defer string parsing until absolutely necessary. Use fast substrings instead of new Date()
