@@ -93,3 +93,7 @@
 ## 2026-10-16 - Fast-Fail Lookaheads
 **Learning:** In filtering loops that search ahead for split plays or glitches (e.g., RULE 1), performing the lookahead and date parsing for *every* event causes massive overhead.
 **Action:** When analyzing event sequences, fast-fail complex lookaheads and date parsing by first verifying the event did not end normally (`if (e.reason_end !== 'trackdone')`). Bypassing lookaheads for normal track completions provides significant speedups on massive datasets.
+
+## 2023-11-01 - Avoid Math.min() inside lookahead loops
+**Learning:** Invoking `Math.min()` to calculate array boundaries inside a hot lookahead loop introduces measurable function invocation overhead compared to simple primitive conditional assignments.
+**Action:** Extract boundary calculations (e.g., `const loopMax = index + 5; const endBoundary = loopMax < len ? loopMax : len;`) before or inside the loop using standard boolean logic instead of `Math.min()`.
