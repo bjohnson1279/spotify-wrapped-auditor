@@ -73,8 +73,10 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             let nextSameTrack: SpotifyAudioEvent | null = null;
             let gapToNextSame = Infinity;
 
-            const loopMax = Math.min(index + 5, len);
-            for (let j = index + 1; j < loopMax; j++) {
+            // ⚡ Bolt: Fast array boundary lookup without invoking Math.min inside the loop
+            const loopMax = index + 5;
+            const endBoundary = loopMax < len ? loopMax : len;
+            for (let j = index + 1; j < endBoundary; j++) {
                 const candidate = deduped[j];
                 if (candidate.master_metadata_track_name === currTrack && candidate.master_metadata_album_artist_name === currArtist) {
                     nextSameTrack = candidate;

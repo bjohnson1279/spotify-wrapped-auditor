@@ -45,6 +45,8 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     const MAX_TOTAL_SIZE = 250 * 1024 * 1024;
     let cumulativeSize = 0;
 
+    let rawEventsIdx = 0;
+
     relevantFiles.forEach(file => {
         try {
             const fullPath = path.join(dataDir, file);
@@ -82,21 +84,40 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
+            rawEvents.length += parsed.length;
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
-                if (!item || typeof item !== 'object') continue;
 
                 // ⚡ Bolt & 🛡️ Sentinel: Fast-fail validation with strict length boundaries
                 if (!item || typeof item !== 'object') continue;
-                if (typeof item.ts !== 'string' || item.ts.length > 50) continue;
-                if (typeof item.ms_played !== 'number' || !Number.isFinite(item.ms_played) || item.ms_played < 0) continue;
-                if (item.master_metadata_track_name != null && (typeof item.master_metadata_track_name !== 'string' || item.master_metadata_track_name.length > 1000)) continue;
-                if (item.master_metadata_album_artist_name != null && (typeof item.master_metadata_album_artist_name !== 'string' || item.master_metadata_album_artist_name.length > 1000)) continue;
-                if (item.reason_end != null && (typeof item.reason_end !== 'string' || item.reason_end.length > 500)) continue;
-                if (item.ip_addr != null && (typeof item.ip_addr !== 'string' || item.ip_addr.length > 500)) continue;
-                if (item.audiobook_title != null && (typeof item.audiobook_title !== 'string' || item.audiobook_title.length > 1000)) continue;
-                if (item.episode_name != null && (typeof item.episode_name !== 'string' || item.episode_name.length > 1000)) continue;
-                if (item.episode_show_name != null && (typeof item.episode_show_name !== 'string' || item.episode_show_name.length > 1000)) continue;
+
+                // Cache primitive properties for strict boundary validation to avoid repeated property lookup
+                const ts = item.ts;
+                if (typeof ts !== 'string' || ts.length > 50) continue;
+
+                const ms_played = item.ms_played;
+                if (typeof ms_played !== 'number' || !Number.isFinite(ms_played) || ms_played < 0) continue;
+
+                const track_name = item.master_metadata_track_name;
+                if (track_name != null && (typeof track_name !== 'string' || track_name.length > 1000)) continue;
+
+                const album_artist_name = item.master_metadata_album_artist_name;
+                if (album_artist_name != null && (typeof album_artist_name !== 'string' || album_artist_name.length > 1000)) continue;
+
+                const reason_end = item.reason_end;
+                if (reason_end != null && (typeof reason_end !== 'string' || reason_end.length > 500)) continue;
+
+                const ip_addr = item.ip_addr;
+                if (ip_addr != null && (typeof ip_addr !== 'string' || ip_addr.length > 500)) continue;
+
+                const audiobook_title = item.audiobook_title;
+                if (audiobook_title != null && (typeof audiobook_title !== 'string' || audiobook_title.length > 1000)) continue;
+
+                const episode_name = item.episode_name;
+                if (episode_name != null && (typeof episode_name !== 'string' || episode_name.length > 1000)) continue;
+
+                const episode_show_name = item.episode_show_name;
+                if (episode_show_name != null && (typeof episode_show_name !== 'string' || episode_show_name.length > 1000)) continue;
 
                 // Check *all* keys for extreme string lengths or unexpected complex types to prevent OOM
                 let isMalicious = false;
@@ -118,13 +139,15 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
                 if (isMalicious) continue;
 
-                // ⚡ Bolt: V8 handles Array.prototype.push better than transitioning to a HOLEY elements kind
-                rawEvents.push(item);
+                // ⚡ Bolt: Manual indexing into a pre-extended array avoids V8 push overhead
+                rawEvents[rawEventsIdx++] = item;
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }
     });
+
+    rawEvents.length = rawEventsIdx;
 
     // Sort by timestamp
     // ISO 8601 strings can be sorted lexicographically, much faster than parsing to Date
