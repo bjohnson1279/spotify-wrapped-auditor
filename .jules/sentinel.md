@@ -134,3 +134,8 @@
 **Vulnerability:** The data loader used `fs.statSync(path)` to validate file size and type, followed by `fs.readFileSync(path)` to actually read the contents. This creates a race condition window where a valid file could be swapped with a malicious payload (like a massive file or a named pipe) between the check and the read, bypassing the validations.
 **Learning:** Checking a file by path and then reading it by path is vulnerable to race conditions (TOCTOU).
 **Prevention:** Always open a file descriptor first using `fs.openSync(path, 'r')`. Then validate the file atomically using `fs.fstatSync(fd)` and read it using `fs.readFileSync(fd)` to guarantee you are checking and reading the exact same file handle. Ensure the file descriptor is closed properly in a `finally` block.
+
+## 2025-10-18 - Memory Exhaustion via Unbounded Cumulative File Size
+**Vulnerability:** The data loader read external JSON files into memory with `fs.readFileSync` based on a 50MB per-file limit. However, there was no limit on the total number of files or the cumulative size of all files processed. An attacker could provide thousands of valid 50MB files (e.g., a JSON zip bomb equivalent), causing the application to accumulate data indefinitely until exceeding Node's heap limit and triggering an Out of Memory (OOM) Denial of Service.
+**Learning:** Limiting the size of individual inputs is insufficient if the application aggregates them indefinitely into a single memory structure (`rawEvents`).
+**Prevention:** Always implement a cumulative processing limit (e.g., `cumulativeSize += stats.size`) and halt processing or truncate input when a safe global maximum (e.g., 250MB total) is reached.

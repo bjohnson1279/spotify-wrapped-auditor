@@ -42,6 +42,8 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     // 🛡️ Sentinel: Max file size (50 MB) to prevent OOM.
     // JSON.parse memory overhead is 3x-5x the raw string size, so 256MB can exceed Node's heap.
     const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    const MAX_TOTAL_SIZE = 250 * 1024 * 1024;
+    let cumulativeSize = 0;
 
     relevantFiles.forEach(file => {
         try {
@@ -60,8 +62,13 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                     console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds 50MB limit, preventing memory exhaustion.`);
                     return;
                 }
+                if (cumulativeSize + stats.size > MAX_TOTAL_SIZE) {
+                    console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Cumulative processing size exceeds 250MB limit, preventing memory exhaustion (DoS).`);
+                    return;
+                }
 
                 raw = fs.readFileSync(fd, 'utf-8');
+                cumulativeSize += stats.size;
             } finally {
                 fs.closeSync(fd);
             }
