@@ -45,7 +45,6 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     const MAX_TOTAL_SIZE = 250 * 1024 * 1024;
     let cumulativeSize = 0;
 
-    let rawEventsIdx = 0;
 
     relevantFiles.forEach(file => {
         try {
@@ -84,7 +83,7 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
-            rawEvents.length += parsed.length;
+
             for (let i = 0; i < parsed.length; i++) {
                 const item = parsed[i];
 
@@ -139,15 +138,14 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
                 if (isMalicious) continue;
 
-                // ⚡ Bolt: Manual indexing into a pre-extended array avoids V8 push overhead
-                rawEvents[rawEventsIdx++] = item;
+                // ⚡ Bolt: Use .push() for chunk merging instead of length expansion and manual indexing to prevent V8 from transitioning the array to a slow HOLEY_ELEMENTS structure.
+                rawEvents.push(item);
             }
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }
     });
 
-    rawEvents.length = rawEventsIdx;
 
     // Sort by timestamp
     // ISO 8601 strings can be sorted lexicographically, much faster than parsing to Date
