@@ -97,3 +97,7 @@
 ## 2023-11-01 - Avoid Math.min() inside lookahead loops
 **Learning:** Invoking `Math.min()` to calculate array boundaries inside a hot lookahead loop introduces measurable function invocation overhead compared to simple primitive conditional assignments.
 **Action:** Extract boundary calculations (e.g., `const loopMax = index + 5; const endBoundary = loopMax < len ? loopMax : len;`) before or inside the loop using standard boolean logic instead of `Math.min()`.
+
+## 2023-11-20 - Use Array.push() for merging arrays in loops
+**Learning:** Using progressive length expansion (arr.length += chunkLength) combined with manual sequential indexing (arr[idx++] = item) to iteratively merge massive array chunks in V8 performs substantially worse than simple Array.push(). Expanding length converts PACKED_ELEMENTS to HOLEY_ELEMENTS arrays, causing performance penalties on subsequent push/access operations.
+**Action:** Replace length expansion and manual index variables with simple `arr.push()` when merging array chunks.
