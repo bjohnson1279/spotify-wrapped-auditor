@@ -51,8 +51,8 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
         try {
             const fullPath = path.join(dataDir, file);
 
-            // 🛡️ Sentinel: Open file and validate atomically to prevent TOCTOU vulnerabilities
-            const fd = fs.openSync(fullPath, 'r');
+            // 🛡️ Sentinel: Open file atomically to prevent TOCTOU, and use O_NONBLOCK to prevent hanging on FIFOs/special files before fstatSync can run
+            const fd = fs.openSync(fullPath, fs.constants.O_RDONLY | fs.constants.O_NONBLOCK);
             let raw: string;
             try {
                 const stats = fs.fstatSync(fd);
