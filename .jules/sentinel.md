@@ -139,3 +139,8 @@
 **Vulnerability:** The data loader read external JSON files into memory with `fs.readFileSync` based on a 50MB per-file limit. However, there was no limit on the total number of files or the cumulative size of all files processed. An attacker could provide thousands of valid 50MB files (e.g., a JSON zip bomb equivalent), causing the application to accumulate data indefinitely until exceeding Node's heap limit and triggering an Out of Memory (OOM) Denial of Service.
 **Learning:** Limiting the size of individual inputs is insufficient if the application aggregates them indefinitely into a single memory structure (`rawEvents`).
 **Prevention:** Always implement a cumulative processing limit (e.g., `cumulativeSize += stats.size`) and halt processing or truncate input when a safe global maximum (e.g., 250MB total) is reached.
+
+## 2025-10-18 - Type Confusion in Input Sanitization
+**Vulnerability:** The `sanitize` and `sanitizeLog` functions assumed their inputs were strings and called `.replace()` directly. If a maliciously crafted JSON payload provided an array or object in a sanitized field (like a file name or track title), the application would throw a `TypeError: str.replace is not a function`, leading to an unhandled exception and Denial of Service (DoS) crash.
+**Learning:** Functions designed to sanitize string inputs (like removing ANSI escape codes) must explicitly enforce that the input is actually a string when dealing with parsed JSON data.
+**Prevention:** Always include a strict runtime type check (`if (typeof str !== 'string') return '';`) at the beginning of string manipulation functions before calling string-specific methods.
