@@ -17,6 +17,7 @@ import * as path from 'path';
 import { SpotifyAudioEvent } from '../interface/SpotifyAudioEvent.js';
 
 const sanitizeLog = (str: string): string => {
+    if (typeof str !== 'string') return '';
     // Strip ANSI escape codes and control characters to prevent Terminal/Log Injection
     return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
 };
