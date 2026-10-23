@@ -86,6 +86,10 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
 
             for (let i = 0; i < parsed.length; i++) {
+                if (rawEvents.length >= 5000000) {
+                    console.warn(`[WARNING] Maximum event limit (5,000,000) reached. Stopping further ingestion to prevent memory exhaustion.`);
+                    break;
+                }
                 const item = parsed[i];
 
                 // ⚡ Bolt & 🛡️ Sentinel: Fast-fail validation with strict length boundaries
