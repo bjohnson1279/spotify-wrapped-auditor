@@ -144,3 +144,8 @@
 **Vulnerability:** The `sanitize` and `sanitizeLog` functions assumed their inputs were strings and called `.replace()` directly. If a maliciously crafted JSON payload provided an array or object in a sanitized field (like a file name or track title), the application would throw a `TypeError: str.replace is not a function`, leading to an unhandled exception and Denial of Service (DoS) crash.
 **Learning:** Functions designed to sanitize string inputs (like removing ANSI escape codes) must explicitly enforce that the input is actually a string when dealing with parsed JSON data.
 **Prevention:** Always include a strict runtime type check (`if (typeof str !== 'string') return '';`) at the beginning of string manipulation functions before calling string-specific methods.
+
+## 2026-10-18 - Memory Exhaustion via Unbounded Array Expansion
+**Vulnerability:** Although a cumulative processing size limit (e.g., 250MB) was enforced for incoming JSON files, an attacker could supply a payload containing millions of tiny valid objects. When parsed and added to an array, the V8 object overhead significantly exceeds the raw JSON text size, pushing Node.js past its heap limit (~1.4GB) and causing an Out-Of-Memory (OOM) Denial of Service (DoS) crash.
+**Learning:** Limiting the raw input text size is not always sufficient to prevent memory exhaustion if the input maps to an unbounded number of distinct runtime objects.
+**Prevention:** In addition to input byte limits, enforce explicit maximum length constraints on internal collections (e.g., `if (rawEvents.length >= 5000000) break;`) to strictly bound V8 heap allocation.
