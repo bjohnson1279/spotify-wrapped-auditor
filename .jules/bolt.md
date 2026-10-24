@@ -101,3 +101,7 @@
 ## 2023-11-20 - Use Array.push() for merging arrays in loops
 **Learning:** Using progressive length expansion (arr.length += chunkLength) combined with manual sequential indexing (arr[idx++] = item) to iteratively merge massive array chunks in V8 performs substantially worse than simple Array.push(). Expanding length converts PACKED_ELEMENTS to HOLEY_ELEMENTS arrays, causing performance penalties on subsequent push/access operations.
 **Action:** Replace length expansion and manual index variables with simple `arr.push()` when merging array chunks.
+
+## 2025-06-25 - Avoid substring for specific char comparisons
+**Learning:** Extracting parts of a string using `.substring()` to compare against specific string values (like month bounds) in hot loops incurs V8 string allocation and garbage collection overhead.
+**Action:** Extract specific characters using `charCodeAt()` and perform integer math (e.g., checking if `charCodeAt` evaluates to specific ASCII numbers like 48 for '0') to entirely eliminate string allocations in inner loops when doing targeted boundary checks.

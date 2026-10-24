@@ -142,8 +142,11 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 
             // 3.3: Late Year Logout Filter
             if (e.master_metadata_album_artist_name !== '311') {
-                if (!lazyTsMonthDay) lazyTsMonthDay = e.ts.substring(5, 10);
-                if (lazyTsMonthDay.substring(0, 2) >= '08') { // August is month 08 (0-indexed 7)
+                // ⚡ Bolt: Fast inline character code check instead of allocating and comparing substrings
+                const m1 = e.ts.charCodeAt(5);
+                const m2 = e.ts.charCodeAt(6);
+                // 48 = '0', 49 = '1', 56 = '8'. Checks if month >= '08'
+                if (m1 === 49 || (m1 === 48 && m2 >= 56)) {
                     if (e.reason_end === 'logout' || (e.reason_end === 'endplay' && e.skipped)) {
                         if (e.ms_played < 50000) continue;
                     }
