@@ -149,3 +149,8 @@
 **Vulnerability:** Although a cumulative processing size limit (e.g., 250MB) was enforced for incoming JSON files, an attacker could supply a payload containing millions of tiny valid objects. When parsed and added to an array, the V8 object overhead significantly exceeds the raw JSON text size, pushing Node.js past its heap limit (~1.4GB) and causing an Out-Of-Memory (OOM) Denial of Service (DoS) crash.
 **Learning:** Limiting the raw input text size is not always sufficient to prevent memory exhaustion if the input maps to an unbounded number of distinct runtime objects.
 **Prevention:** In addition to input byte limits, enforce explicit maximum length constraints on internal collections (e.g., `if (rawEvents.length >= 5000000) break;`) to strictly bound V8 heap allocation.
+
+## 2026-10-24 - Unsanitized Error Messages Leading to Log Injection and Path Leakage
+**Vulnerability:** The top-level `runAudit()` catch block in `index.ts` printed `error.message` directly using `console.error()`. A malformed data directory or malicious file could throw an exception containing ANSI escape codes, leading to terminal log injection. Furthermore, exceptions thrown from `fs` operations often contain internal paths. When a custom error was thrown containing `process.cwd()`, it leaked the internal application directory structure.
+**Learning:** Even when throwing custom errors or handling generic system errors, the `message` property can contain unsanitized input or internal environment details (like paths).
+**Prevention:** Always sanitize top-level error messages before logging or presenting them to users. Strip ANSI escape codes to prevent log injection and redact known sensitive internal data like `process.cwd()` to prevent path leakage.
