@@ -135,7 +135,9 @@ try {
 } catch (error) {
     if (error instanceof Error) {
         // 🛡️ Sentinel: Sanitize error messages to prevent terminal log injection and path leakage
-        let safeMessage = error.message.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+        // Explicitly check for string to avoid type confusion DoS if error.message is somehow not a string
+        const rawMessage = typeof error.message === 'string' ? error.message : String(error.message);
+        let safeMessage = rawMessage.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '').replace(/[\x00-\x1F\x7F-\x9F]/g, '');
         // Redact the current working directory to avoid leaking internal paths
         const cwd = process.cwd();
         if (cwd) {
