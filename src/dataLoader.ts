@@ -126,6 +126,11 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 // Check *all* keys for extreme string lengths or unexpected complex types to prevent OOM
                 let isMalicious = false;
                 for (const key in item) {
+                    // 🛡️ Sentinel: Reject dangerous prototype pollution keys
+                    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+                        isMalicious = true;
+                        break;
+                    }
                     const val = item[key];
                     // ⚡ Bolt: Cache typeof evaluation to avoid redundant V8 type evaluations in the hot loop
                     const t = typeof val;
