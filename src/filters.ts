@@ -28,7 +28,11 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
     // ⚡ Bolt: Pre-calculate end date string boundaries to avoid parsing overhead
     const endMonthStr = (config.END_DATE.getUTCMonth() + 1).toString().padStart(2, '0');
     const endDayStr = config.END_DATE.getUTCDate().toString().padStart(2, '0');
-    const endMonthDayStr = `${endMonthStr}-${endDayStr}`;
+    // ⚡ Bolt: Extract character codes outside the hot loop for O(1) integer comparison
+    const em1 = endMonthStr.charCodeAt(0);
+    const em2 = endMonthStr.charCodeAt(1);
+    const ed1 = endDayStr.charCodeAt(0);
+    const ed2 = endDayStr.charCodeAt(1);
 
     const len = deduped.length;
     // ⚡ Bolt: Pre-allocate array instead of using .push() to eliminate dynamic resizing overhead
@@ -95,13 +99,13 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
             }
         }
 
-        // ⚡ Bolt: Defer string parsing until absolutely necessary. Use fast substrings instead of new Date()
-        let lazyTsMonthDay: string | null = null;
-
         // RULE 2: BOUNDARY LOGOUT (IPv4 Final Day)
         if (e.reason_end === 'logout' && isIPv4) {
-            lazyTsMonthDay = e.ts.substring(5, 10);
-            if (lazyTsMonthDay === endMonthDayStr) {
+            // ⚡ Bolt: Fast inline character code comparison to eliminate .substring() string allocation
+            if (e.ts.charCodeAt(5) === em1 &&
+                e.ts.charCodeAt(6) === em2 &&
+                e.ts.charCodeAt(8) === ed1 &&
+                e.ts.charCodeAt(9) === ed2) {
                 continue;
             }
         }
