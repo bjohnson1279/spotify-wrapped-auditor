@@ -26,25 +26,40 @@ A high-precision tool to replicate and audit your Spotify Wrapped statistics fro
 npm install
 ```
 
-### Running the Audit
-Compile the TypeScript and run the audit:
+### Environment Configuration
+Optionally configure your home IPv4 address to enable home-network-specific filtering rules (boundary logouts and consecutive play redundancy):
 
 ```bash
-npx tsc && node dist/index.js [options]
+export HOME_IP="192.168.1.100"
 ```
 
-**Options:**
+### Running the Audit
+Build the project and run via npm scripts or direct CLI invocation:
+
+```bash
+# Build TypeScript files
+npm run build
+
+# Run default 2025 Wrapped audit
+npm run audit:2025
+
+# Run all-time audit
+npm run audit:all-time
+
+# Run CLI with custom options
+node dist/index.js --year=2025 --top=100
+```
+
+**CLI Options:**
 - `--year=2025`: Filter for a specific year.
 - `--all-time`: Run across the entire dataset.
 - `--top=100`: Customize how many songs to show in the report.
 
-### Example Commands
-```bash
-# Official 2025 Audit
-node dist/index.js --year=2025
+### Running Tests
+Execute the test suite using Node.js native test runner:
 
-# Career Summary
-node dist/index.js --all-time --top=50
+```bash
+npm test
 ```
 
 ## How It Works
@@ -59,6 +74,7 @@ Spotify Wrapped doesn't count every play. This tool implements the "Tiered Filte
 - `src/dataLoader.ts`: JSON ingestion and deduplication.
 - `src/filters.ts`: The core filtering logic (Wrapped vs. Standard).
 - `src/reporter.ts`: Output formatting for songs and artists.
+- `interface/`: TypeScript interface and type definitions for streaming events.
 
 ---
 *Disclaimer: This project is intended for personal data auditing and is not affiliated with Spotify.*
