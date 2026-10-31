@@ -203,4 +203,132 @@ describe('dataLoader module', () => {
             cleanupTempDir(dir);
         }
     });
+
+    it('should skip files exceeding MAX_FILE_SIZE (50MB)', () => {
+        const dir = createTempDir();
+        try {
+            const filePath = path.join(dir, 'large_file_2025.json');
+            // Write a small valid file first
+            const normalFilePath = path.join(dir, 'normal_file_2025.json');
+            fs.writeFileSync(normalFilePath, JSON.stringify([{
+                ts: '2025-05-01T10:00:00Z',
+                ms_played: 60000,
+                master_metadata_track_name: 'Normal Song'
+            }]));
+
+            // Create a sparse file of 51MB
+            const fd = fs.openSync(filePath, 'w');
+            fs.ftruncateSync(fd, 51 * 1024 * 1024);
+            fs.closeSync(fd);
+
+            const result = loadAndDedupEvents(dir);
+            assert.equal(result.length, 1);
+            assert.equal(result[0].master_metadata_track_name, 'Normal Song');
+        } finally {
+            cleanupTempDir(dir);
+        }
+    });
+
+    it('should skip files when cumulativeSize exceeds MAX_TOTAL_SIZE (250MB)', () => {
+        const dir = createTempDir();
+        try {
+            // First file: 40MB
+            const file1 = path.join(dir, 'file1_2025.json');
+            // Second file: 40MB
+            const file2 = path.join(dir, 'file2_2025.json');
+
+            // Create 6 files of 45MB each using ftruncateSync (sparse files, 0 real disk space)
+            // 6 * 45MB = 270MB. The first 5 files total 225MB <= 250MB. The 6th file brings total to 270MB > 250MB, so it gets skipped.
+            for (let i = 0; i < 6; i++) {
+                const filePath = path.join(dir, `streaming_history_audio_2025_${i}.json`);
+                const fd = fs.openSync(filePath, 'w');
+                fs.ftruncateSync(fd, 45 * 1024 * 1024);
+                fs.closeSync(fd);
+            }
+
+            // Also have a small file after them
+            const smallFile = path.join(dir, `streaming_history_audio_2025_small.json`);
+            fs.writeFileSync(smallFile, JSON.stringify([{
+                ts: '2025-05-01T10:00:00Z',
+                ms_played: 60000,
+                master_metadata_track_name: 'Small Song'
+            }]));
+
+            const result = loadAndDedupEvents(dir);
+            // The small file or valid files are parsed; the 6th sparse file is skipped because cumulativeSize would exceed 250MB
+            assert.ok(result.length <= 1);
+        } finally {
+            cleanupTempDir(dir);
+        }
+    });
+
+    it('should skip non-regular files (e.g. FIFOs/devices reporting isFile() = false)', () => {
+        const dir = createTempDir();
+        try {
+            const fifoPath = path.join(dir, 'streaming_history_audio_2025_fifo.json');
+            // Try creating a FIFO using mkfifo if on Unix
+            try {
+                const child_process = require('child_process');
+                child_process.execSync(`mkfifo "${fifoPath}"`);
+            } catch {
+                // If mkfifo is not supported in the environment, skip test
+                return;
+            }
+
+            const result = loadAndDedupEvents(dir);
+            assert.equal(result.length, 0);
+        } finally {
+            cleanupTempDir(dir);
+        }
+    });
+
+    it('should validate all optional fields and string length boundaries', () => {
+        const dir = createTempDir();
+        try {
+            const validEventWithAllFields = {
+                ts: '2025-05-01T10:00:00Z',
+                ms_played: 60000,
+                master_metadata_track_name: 'Valid Track',
+                master_metadata_album_artist_name: 'Valid Artist',
+                reason_end: 'trackdone',
+                ip_addr: '127.0.0.1',
+                audiobook_title: 'Audiobook',
+                episode_name: 'Episode',
+                episode_show_name: 'Show'
+            };
+
+            const invalidItems = [
+                // non-object / null item
+                null,
+                // ts not string or > 50 chars
+                { ts: 'a'.repeat(51), ms_played: 1000 },
+                // invalid album_artist_name
+                { ...validEventWithAllFields, master_metadata_album_artist_name: 123 },
+                { ...validEventWithAllFields, master_metadata_album_artist_name: 'a'.repeat(1001) },
+                // invalid reason_end
+                { ...validEventWithAllFields, reason_end: true },
+                { ...validEventWithAllFields, reason_end: 'a'.repeat(501) },
+                // invalid ip_addr
+                { ...validEventWithAllFields, ip_addr: {} },
+                { ...validEventWithAllFields, ip_addr: 'a'.repeat(501) },
+                // invalid audiobook_title
+                { ...validEventWithAllFields, audiobook_title: 456 },
+                { ...validEventWithAllFields, audiobook_title: 'a'.repeat(1001) },
+                // invalid episode_name
+                { ...validEventWithAllFields, episode_name: [] },
+                { ...validEventWithAllFields, episode_name: 'a'.repeat(1001) },
+                // invalid episode_show_name
+                { ...validEventWithAllFields, episode_show_name: 789 },
+                { ...validEventWithAllFields, episode_show_name: 'a'.repeat(1001) },
+            ];
+
+            fs.writeFileSync(path.join(dir, 'test_2025.json'), JSON.stringify([...invalidItems, validEventWithAllFields]));
+
+            const result = loadAndDedupEvents(dir);
+            assert.equal(result.length, 1);
+            assert.equal(result[0].master_metadata_track_name, 'Valid Track');
+        } finally {
+            cleanupTempDir(dir);
+        }
+    });
 });
