@@ -1,5 +1,6 @@
 
 import * as path from 'path';
+import * as os from 'os';
 import { loadAndDedupEvents } from './src/dataLoader.js';
 import { applyWrappedFilters, applyStandardFilters } from './src/filters.js';
 import { generateReport, TrackStats } from './src/reporter.js';
@@ -144,6 +145,12 @@ try {
             // Escape potential regex characters in cwd, then replace globally
             const escapedCwd = cwd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             safeMessage = safeMessage.replace(new RegExp(escapedCwd, 'g'), '[REDACTED_PATH]');
+        }
+        // Redact the user's home directory to avoid leaking system usernames (e.g., /home/brent)
+        const homeDir = os.homedir();
+        if (homeDir) {
+            const escapedHome = homeDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            safeMessage = safeMessage.replace(new RegExp(escapedHome, 'g'), '[REDACTED_HOME]');
         }
         console.error(`[ERROR] Audit failed: ${safeMessage}`);
     } else {

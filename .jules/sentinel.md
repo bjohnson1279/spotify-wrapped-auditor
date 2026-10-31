@@ -158,3 +158,8 @@
 **Vulnerability:** Untrusted external JSON was parsed and its keys were iterated without filtering out malicious prototype pollution keys (`__proto__`, `constructor`, `prototype`).
 **Learning:** Even if the JSON object isn't merged into a global object immediately, iterating over prototype pollution keys inside the data ingestion loop could potentially trigger unexpected behaviour or allow them to persist into aggregated structures.
 **Prevention:** Always strictly reject dangerous prototype pollution keys (`__proto__`, `constructor`, `prototype`) when iterating over untrusted parsed JSON objects in ingestion/validation loops.
+
+## 2026-10-31 - Unsanitized Error Messages Leading to System Username Leakage
+**Vulnerability:** System unhandled errors (e.g. `ENOENT` for file not found or permission errors) naturally include the absolute paths to the system resources involved. When the application prints these raw error messages, it risks exposing the underlying system architecture, including user directory paths (e.g. `/home/username` or `C:\Users\Username`), which act as information disclosure.
+**Learning:** Redacting just `process.cwd()` is insufficient if the user data lives outside the project directory, as `os.homedir()` could leak user names inside error logs.
+**Prevention:** In the global error boundary/catcher, use `os.homedir()` as an additional string pattern to redact with a safe placeholder (e.g., `[REDACTED_HOME]`) across the error message.
