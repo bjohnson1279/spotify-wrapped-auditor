@@ -229,5 +229,184 @@ describe('filters module', () => {
             const result = applyWrappedFilters(events, defaultConfig);
             assert.equal(result.length, 0);
         });
+
+        it('Rule 1: should filter long glitch play (>300000ms) with gap < 210000ms even if reason_end is remote', () => {
+            const events = [
+                createEvent({
+                    ts: '2025-05-15T12:00:00Z',
+                    ms_played: 350000,
+                    reason_end: 'remote',
+                    master_metadata_track_name: 'Long Track',
+                    master_metadata_album_artist_name: 'Long Artist',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:02:00Z', // gap = 120,000ms (< 210,000ms)
+                    ms_played: 40000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Long Track',
+                    master_metadata_album_artist_name: 'Long Artist',
+                }),
+            ];
+            const result = applyWrappedFilters(events, defaultConfig);
+            assert.equal(result.length, 1);
+            assert.equal(result[0].ms_played, 40000);
+        });
+
+        it('Rule 1: should respect IPv6 glitch window (120000ms) vs IPv4 glitch window (150000ms)', () => {
+            delete process.env.HOME_IP; // IPv6 / non-home mode
+            const eventsIpv6 = [
+                createEvent({
+                    ts: '2025-05-15T12:00:00Z',
+                    ms_played: 60000,
+                    reason_end: 'fwdbtn',
+                    master_metadata_track_name: 'Window Song',
+                    master_metadata_album_artist_name: 'Window Artist',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:02:10Z', // gap = 130,000ms (> 120,000ms IPv6 window)
+                    ms_played: 60000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Window Song',
+                    master_metadata_album_artist_name: 'Window Artist',
+                }),
+            ];
+            const resultIpv6 = applyWrappedFilters(eventsIpv6, defaultConfig);
+            // In IPv6, gap of 130s is outside 120s window, so first event is NOT filtered
+            assert.equal(resultIpv6.length, 2);
+
+            process.env.HOME_IP = '192.168.1.1'; // IPv4 home mode
+            const eventsIpv4 = [
+                createEvent({
+                    ts: '2025-05-15T12:00:00Z',
+                    ms_played: 60000,
+                    reason_end: 'fwdbtn',
+                    ip_addr: '192.168.1.1',
+                    master_metadata_track_name: 'Window Song',
+                    master_metadata_album_artist_name: 'Window Artist',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:02:10Z', // gap = 130,000ms (< 150,000ms IPv4 window)
+                    ms_played: 60000,
+                    reason_end: 'trackdone',
+                    ip_addr: '192.168.1.1',
+                    master_metadata_track_name: 'Window Song',
+                    master_metadata_album_artist_name: 'Window Artist',
+                }),
+            ];
+            const resultIpv4 = applyWrappedFilters(eventsIpv4, defaultConfig);
+            // In IPv4, gap of 130s is within 150s window, so first event IS filtered
+            assert.equal(resultIpv4.length, 1);
+            assert.equal(resultIpv4[0].ts, '2025-05-15T12:02:10Z');
+        });
+
+        it('Rule 3.2: should filter sandwich redundancy when track is flanked by same song within 10 minutes (600,000ms)', () => {
+            process.env.HOME_IP = '192.168.1.1';
+            const events = [
+                createEvent({
+                    ts: '2025-05-15T12:00:00Z',
+                    ms_played: 180000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Sandwich Bread',
+                    master_metadata_album_artist_name: 'Sandwich Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:05:00Z', // gap from prev = 300,000ms (< 600,000ms)
+                    ms_played: 45000,
+                    reason_end: 'fwdbtn',
+                    master_metadata_track_name: 'Middle Filling',
+                    master_metadata_album_artist_name: 'Middle Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:06:00Z',
+                    ms_played: 180000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Sandwich Bread',
+                    master_metadata_album_artist_name: 'Sandwich Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+            ];
+
+            const result = applyWrappedFilters(events, defaultConfig);
+            // Middle filling should be filtered out by sandwich redundancy
+            assert.equal(result.length, 2);
+            assert.equal(result[0].master_metadata_track_name, 'Sandwich Bread');
+            assert.equal(result[1].master_metadata_track_name, 'Sandwich Bread');
+        });
+
+        it('Rule 3.2: should not filter sandwich when prevGap is >= 600000ms', () => {
+            process.env.HOME_IP = '192.168.1.1';
+            const events = [
+                createEvent({
+                    ts: '2025-05-15T12:00:00Z',
+                    ms_played: 180000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Sandwich Bread',
+                    master_metadata_album_artist_name: 'Sandwich Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:11:00Z', // gap from prev = 660,000ms (>= 600,000ms)
+                    ms_played: 45000,
+                    reason_end: 'fwdbtn',
+                    master_metadata_track_name: 'Middle Filling',
+                    master_metadata_album_artist_name: 'Middle Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+                createEvent({
+                    ts: '2025-05-15T12:12:00Z',
+                    ms_played: 180000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Sandwich Bread',
+                    master_metadata_album_artist_name: 'Sandwich Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+            ];
+
+            const result = applyWrappedFilters(events, defaultConfig);
+            assert.equal(result.length, 3);
+        });
+
+        it('Rule 3.3: should not filter late-year plays before August (e.g. July) or if ms_played >= 50000', () => {
+            process.env.HOME_IP = '192.168.1.1';
+            const events = [
+                // In July (month 07), logout short play should not be filtered
+                createEvent({
+                    ts: '2025-07-15T12:00:00Z',
+                    ms_played: 40000,
+                    reason_end: 'logout',
+                    ip_addr: '192.168.1.1',
+                    master_metadata_track_name: 'July Logout',
+                }),
+                // In September (month 09), play with ms_played >= 50000 should not be filtered
+                createEvent({
+                    ts: '2025-09-15T12:00:00Z',
+                    ms_played: 52000,
+                    reason_end: 'logout',
+                    ip_addr: '192.168.1.1',
+                    master_metadata_track_name: 'Sept Long Logout',
+                }),
+            ];
+
+            const result = applyWrappedFilters(events, defaultConfig);
+            assert.equal(result.length, 2);
+        });
+
+        it('should handle binary search edge cases when all events are before START_DATE or after END_DATE', () => {
+            const beforeEvents = [
+                createEvent({ ts: '2024-01-01T10:00:00Z' }),
+                createEvent({ ts: '2024-06-01T10:00:00Z' }),
+            ];
+            assert.equal(applyWrappedFilters(beforeEvents, defaultConfig).length, 0);
+            assert.equal(applyStandardFilters(beforeEvents, defaultConfig).length, 0);
+
+            const afterEvents = [
+                createEvent({ ts: '2025-12-05T10:00:00Z' }),
+                createEvent({ ts: '2026-01-01T10:00:00Z' }),
+            ];
+            assert.equal(applyWrappedFilters(afterEvents, defaultConfig).length, 0);
+            assert.equal(applyStandardFilters(afterEvents, defaultConfig).length, 0);
+        });
     });
 });
