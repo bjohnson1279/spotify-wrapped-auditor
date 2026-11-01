@@ -114,6 +114,13 @@ Execute the full automated test suite using Node's native test runner (`node:tes
 npm test
 ```
 
+The test suite covers:
+- **CLI Parameter Validation & Boundaries** (`tests/cli.test.ts`): Range constraints, numeric checks, sanitization, mode selection, and error redactions.
+- **Data Ingestion & Deduplication** (`tests/dataLoader.test.ts`): File size limits, prototype pollution rejection, schema validation, and multi-tier deduplication.
+- **Filtering Heuristics** (`tests/filters.test.ts`): Minimum duration threshold, universal glitch lookahead, boundary logouts, and redundancy filtering.
+- **Report Generation & Formatting** (`tests/reporter.test.ts`): Song ranking, artist listening aggregation, and terminal output sanitization.
+- **End-to-End Pipeline Integration** (`tests/integration.test.ts`): Multi-file ingestion, filtering, and reporting workflow.
+
 ### Performance Benchmarking
 
 A standalone benchmarking script is provided to test pipeline execution speed across large synthetic or sampled datasets:
@@ -159,7 +166,9 @@ Spotify Wrapped does not count every recorded play. This tool implements the mul
 │   ├── dataLoader.ts      # File reading, validation, sorting, and deduplication
 │   ├── filters.ts         # Wrapped 2025 and standard playback filtering rules
 │   └── reporter.ts        # Report aggregation, sorting, and terminal output
+├── scripts/               # Diagnostic and exploratory analysis scripts
 ├── tests/                 # Unit and integration test suites (node:test)
+│   ├── cli.test.ts
 │   ├── dataLoader.test.ts
 │   ├── filters.test.ts
 │   ├── integration.test.ts
