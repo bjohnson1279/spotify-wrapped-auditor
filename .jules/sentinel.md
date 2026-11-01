@@ -163,3 +163,8 @@
 **Vulnerability:** System unhandled errors (e.g. `ENOENT` for file not found or permission errors) naturally include the absolute paths to the system resources involved. When the application prints these raw error messages, it risks exposing the underlying system architecture, including user directory paths (e.g. `/home/username` or `C:\Users\Username`), which act as information disclosure.
 **Learning:** Redacting just `process.cwd()` is insufficient if the user data lives outside the project directory, as `os.homedir()` could leak user names inside error logs.
 **Prevention:** In the global error boundary/catcher, use `os.homedir()` as an additional string pattern to redact with a safe placeholder (e.g., `[REDACTED_HOME]`) across the error message.
+
+## 2026-11-01 - Terminal Log Injection via Error Messages
+**Vulnerability:** Error messages originating from system operations (like `error.code`) were concatenated into `console.error` logs. Without type checking and string casting before sanitization, unexpected error types could bypass string protections.
+**Learning:** System error codes need explicit casting to strings before applying string replacements like ANSI escape code removal.
+**Prevention:** Ensure variables from error objects are explicitly cast to string (e.g. `String((error as any).code)`) and then sanitized before logging them to the terminal.
