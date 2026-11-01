@@ -17,7 +17,7 @@ const sanitize = (str: string): string => {
 };
 
 export const generateReport = (trackStats: [string, TrackStats][], artistStats: [string, TrackStats][], config: ReporterConfig) => {
-    console.log(`\n === ${config.TITLE} === `);
+    console.log(`\n === ${sanitize(config.TITLE)} === `);
 
     // ⚡ Bolt: Expect array instead of Record to avoid Object.entries() overhead
     const sortedSongs = trackStats
