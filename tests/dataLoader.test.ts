@@ -331,4 +331,47 @@ describe('dataLoader module', () => {
             cleanupTempDir(dir);
         }
     });
+
+    it('should enforce maximum event limit (5,000,000) and break ingestion cleanly with warning', () => {
+        const dir = createTempDir();
+        const originalParse = JSON.parse;
+        const originalWarn = console.warn;
+        const warnings: string[] = [];
+
+        try {
+            console.warn = (...args: any[]) => {
+                warnings.push(args.map(a => String(a)).join(' '));
+            };
+
+            const magicPayload = JSON.stringify([{ __magic_mock__: true }]);
+            fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_0.json'), magicPayload);
+
+            const mockTrack = {
+                ts: '2025-05-01T12:00:00Z',
+                ms_played: 60000,
+                master_metadata_track_name: 'Boundary Track',
+                master_metadata_album_artist_name: 'Boundary Artist'
+            };
+
+            // Use an Array filled with the same object reference to ensure fast native iteration
+            JSON.parse = (text: string, reviver?: any) => {
+                if (typeof text === 'string' && text.includes('__magic_mock__')) {
+                    const arr = new Array(5000005);
+                    arr.fill(mockTrack);
+                    return arr;
+                }
+                return originalParse(text, reviver);
+            };
+
+            const result = loadAndDedupEvents(dir);
+            // Ingestion should stop cleanly after reaching 5,000,000 items
+            assert.ok(warnings.some(w => w.includes('Maximum event limit (5,000,000) reached')));
+            assert.equal(result.length, 5000000);
+            assert.equal(result[0].master_metadata_track_name, 'Boundary Track');
+        } finally {
+            JSON.parse = originalParse;
+            console.warn = originalWarn;
+            cleanupTempDir(dir);
+        }
+    });
 });
