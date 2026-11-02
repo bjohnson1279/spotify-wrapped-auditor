@@ -269,7 +269,8 @@ describe('dataLoader module', () => {
             // Try creating a FIFO using mkfifo if on Unix
             try {
                 const child_process = require('child_process');
-                child_process.execSync(`mkfifo "${fifoPath}"`);
+                // 🛡️ Sentinel: Use execFileSync instead of execSync to avoid shell command injection
+                child_process.execFileSync('mkfifo', [fifoPath]);
             } catch {
                 // If mkfifo is not supported in the environment, skip test
                 return;
