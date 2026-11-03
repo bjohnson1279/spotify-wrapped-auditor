@@ -1,4 +1,10 @@
 
+/**
+ * Report Generation & Terminal Output Formatter.
+ * Ranks tracks and artists by play count and listening duration, while
+ * sanitizing untrusted string outputs to prevent terminal log injection.
+ */
+
 export interface TrackStats {
     count: number;
     time: number;

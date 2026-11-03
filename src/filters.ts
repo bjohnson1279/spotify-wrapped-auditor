@@ -1,5 +1,11 @@
 
 
+/**
+ * Playback Filtering Engine.
+ * Evaluates Wrapped 2025 and standard playback qualification heuristics including
+ * minimum duration, glitch lookahead, boundary logout, and play redundancy.
+ */
+
 const parseISO = (s: string): number => {
     // ⚡ Bolt: Fast inline parsing for YYYY-MM-DDTHH:mm:ssZ ISO strings
     // Bypasses the significant overhead of V8's native Date.parse() in hot loops

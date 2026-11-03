@@ -1,5 +1,11 @@
 
 
+/**
+ * Streaming Data Loader & Ingestion Pipeline.
+ * Validates file sizes, prevents TOCTOU race conditions and prototype pollution,
+ * sorts events chronologically, and applies multi-tier stream deduplication.
+ */
+
 const parseISO = (s: string): number => {
     // ⚡ Bolt: Fast inline parsing for YYYY-MM-DDTHH:mm:ssZ ISO strings
     // Bypasses the significant overhead of V8's native Date.parse() in hot loops
