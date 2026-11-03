@@ -1,4 +1,10 @@
 
+/**
+ * CLI Entrypoint & Audit Orchestrator.
+ * Parses and validates command-line arguments, loads streaming history events,
+ * applies Wrapped or standard playback filters, and generates listening reports.
+ */
+
 import * as path from 'path';
 import * as os from 'os';
 import { loadAndDedupEvents } from './src/dataLoader.js';

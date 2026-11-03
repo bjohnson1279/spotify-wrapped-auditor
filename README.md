@@ -7,6 +7,7 @@ A high-precision auditing tool designed to replicate and verify Spotify Wrapped 
 - **Gold Standard 2025 Logic**: Replicates Spotify's play-counting filters, including multi-track glitch detection, boundary logout handling, and contextual consecutive-play redundancy.
 - **Multi-Year Support**: Generate Wrapped-style reports for 2025 or any custom calendar year.
 - **All-Time Listening Statistics**: Aggregate lifetime listening history across your entire export archive.
+- **Technical Reference & Architecture**: See [`/docs/architecture.md`](docs/architecture.md) for in-depth pipeline flow and API reference.
 - **Sophisticated Tiered Filtering**:
   - 30-second minimum play threshold.
   - Multi-track lookahead for glitch and split-play detection.
@@ -154,6 +155,8 @@ Spotify Wrapped does not count every recorded play. This tool implements the mul
 
 ```
 .
+├── docs/                  # Architecture and technical reference documentation
+│   └── architecture.md
 ├── interface/             # TypeScript type definitions and event interfaces
 │   ├── BaseStreamEvent.ts
 │   ├── MusicEvent.ts
