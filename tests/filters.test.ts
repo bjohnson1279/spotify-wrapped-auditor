@@ -581,6 +581,50 @@ describe('filters module', () => {
             assert.equal(result.length, 3);
         });
 
+        it('Rule 3.2: should filter sandwich redundancy when tsTime is already populated by Rule 1 lookahead', () => {
+            process.env.HOME_IP = '192.168.1.1';
+            // We want e (middle track) to have:
+            // 1. ms_played < 60000 (e.g. 45000)
+            // 2. reason_end !== 'trackdone' (e.g. 'unexpectedexit')
+            // 3. Rule 1 lookahead triggers and sets tsTime:
+            //    j = index + 1 .. index + 4 has candidate with same track/artist as e, but candidate.ms_played < 30000 so Rule 1 does NOT filter e
+            // 4. Then Rule 3.2 sandwich check triggers with prevTrack and nextTrack having identical metadata and prevGap < 600000
+            const events = [
+                // prevTrack
+                createEvent({
+                    ts: '2025-05-15T12:00:00Z',
+                    ms_played: 180000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Sandwich Crust',
+                    master_metadata_album_artist_name: 'Crust Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+                // e (middle track): triggers Rule 1 track match (setting tsTime) then falls into Rule 3.2 sandwich
+                createEvent({
+                    ts: '2025-05-15T12:03:00Z',
+                    ms_played: 45000,
+                    reason_end: 'unexpectedexit',
+                    master_metadata_track_name: 'Sandwich Crust', // matching prev and next
+                    master_metadata_album_artist_name: 'Crust Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+                // nextTrack
+                createEvent({
+                    ts: '2025-05-15T12:04:00Z',
+                    ms_played: 180000,
+                    reason_end: 'trackdone',
+                    master_metadata_track_name: 'Sandwich Crust',
+                    master_metadata_album_artist_name: 'Crust Artist',
+                    ip_addr: '192.168.1.1',
+                }),
+            ];
+            const result = applyWrappedFilters(events, defaultConfig);
+            // Middle track should be filtered out
+            assert.equal(result.length, 2);
+            assert.equal(result[0].ms_played, 180000);
+            assert.equal(result[1].ms_played, 180000);
+        });
+
         it('Rule 3.3: late-year exceptions: artist 311 and unskipped endplay', () => {
             process.env.HOME_IP = '192.168.1.1';
             const events = [
