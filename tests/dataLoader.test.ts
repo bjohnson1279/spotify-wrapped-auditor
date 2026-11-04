@@ -23,6 +23,102 @@ describe('dataLoader module', () => {
         );
     });
 
+    it('should handle non-Error or error without code property during readdirSync gracefully', async () => {
+        const { execFile } = await import('node:child_process');
+        const projectRoot = process.cwd();
+
+        // Subprocess test 1: Error instance without code property
+        const scriptErrorWithoutCode = `
+            import { createRequire } from 'module';
+            const require = createRequire(import.meta.url);
+            const cjsFs = require('fs');
+            cjsFs.readdirSync = () => { throw new Error('Generic error without code'); };
+            const { loadAndDedupEvents } = await import('./dist/src/dataLoader.js');
+            try {
+                loadAndDedupEvents('dummy_dir');
+            } catch (e) {
+                // safely caught
+            }
+        `;
+        const res1 = await new Promise<{ stderr: string }>((resolve) => {
+            execFile(process.execPath, ['--input-type=module', '-e', scriptErrorWithoutCode], { cwd: projectRoot }, (err, stdout, stderr) => {
+                resolve({ stderr: stderr.toString() });
+            });
+        });
+        assert.ok(res1.stderr.includes('Code: UNKNOWN'));
+
+        // Subprocess test 2: Non-Error thrown object (string primitive)
+        const scriptNonError = `
+            import { createRequire } from 'module';
+            const require = createRequire(import.meta.url);
+            const cjsFs = require('fs');
+            cjsFs.readdirSync = () => { throw 'string error'; };
+            const { loadAndDedupEvents } = await import('./dist/src/dataLoader.js');
+            try {
+                loadAndDedupEvents('dummy_dir');
+            } catch (e) {
+                // safely caught
+            }
+        `;
+        const res2 = await new Promise<{ stderr: string }>((resolve) => {
+            execFile(process.execPath, ['--input-type=module', '-e', scriptNonError], { cwd: projectRoot }, (err, stdout, stderr) => {
+                resolve({ stderr: stderr.toString() });
+            });
+        });
+        assert.ok(res2.stderr.includes('Code: UNKNOWN'));
+    });
+
+    it('should safely skip non-regular files such as subdirectories ending in .json', () => {
+        const dir = createTempDir();
+        try {
+            // Create a subdirectory that ends with .json
+            const subDir = path.join(dir, 'nested_folder.json');
+            fs.mkdirSync(subDir);
+
+            // Create a valid file
+            const validFile = path.join(dir, 'valid_stream.json');
+            fs.writeFileSync(validFile, JSON.stringify([{
+                ts: '2025-05-01T10:00:00Z',
+                ms_played: 60000,
+                master_metadata_track_name: 'Regular File Track'
+            }]));
+
+            const result = loadAndDedupEvents(dir);
+            // The directory should be skipped by stats.isFile() check and only the valid file returned
+            assert.equal(result.length, 1);
+            assert.equal(result[0].master_metadata_track_name, 'Regular File Track');
+        } finally {
+            cleanupTempDir(dir);
+        }
+    });
+
+    it('should sort identical timestamps stably without errors', () => {
+        const dir = createTempDir();
+        try {
+            const events = [
+                {
+                    ts: '2025-05-01T10:00:00Z',
+                    ms_played: 60000,
+                    master_metadata_track_name: 'Track A',
+                    reason_end: 'trackdone'
+                },
+                {
+                    ts: '2025-05-01T10:00:00Z',
+                    ms_played: 60000,
+                    master_metadata_track_name: 'Track B',
+                    reason_end: 'trackdone'
+                }
+            ];
+
+            fs.writeFileSync(path.join(dir, 'identical_ts.json'), JSON.stringify(events));
+
+            const result = loadAndDedupEvents(dir);
+            assert.equal(result.length, 2);
+        } finally {
+            cleanupTempDir(dir);
+        }
+    });
+
     it('should load and filter files by year if year parameter is passed', () => {
         const dir = createTempDir();
         try {

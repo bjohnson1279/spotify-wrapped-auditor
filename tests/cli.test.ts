@@ -84,6 +84,32 @@ describe('CLI Orchestration & Argument Boundaries', () => {
             // Should contain no raw ANSI escape sequences
             assert.ok(!/\x1B\[[0-9;]*[a-zA-Z]/.test(result.stderr));
         });
+
+        it('should handle non-Error thrown exceptions gracefully in top-level catch block', async () => {
+            // Execute node with snippet that causes runAudit to throw a non-Error primitive
+            const script = `
+                Object.defineProperty(process, 'argv', {
+                    get() { throw 'Custom primitive string error'; }
+                });
+                import('./dist/index.js');
+            `;
+            const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+                execFile(
+                    process.execPath,
+                    ['--input-type=module', '-e', script],
+                    { cwd: projectRoot },
+                    (error, stdout, stderr) => {
+                        resolve({
+                            code: error ? (error as any).code ?? 1 : 0,
+                            stdout: stdout.toString(),
+                            stderr: stderr.toString()
+                        });
+                    }
+                );
+            });
+            assert.equal(result.code, 1);
+            assert.match(result.stderr, /\[ERROR\] Audit failed due to an unknown error\./);
+        });
     });
 
     describe('Environment Configuration & Mode Indicators', () => {
@@ -154,6 +180,39 @@ describe('CLI Orchestration & Argument Boundaries', () => {
                     fs.unlinkSync(testJsonFile);
                 }
                 if (dataDirCreated && fs.existsSync(dataDir)) {
+                    fs.rmSync(dataDir, { recursive: true, force: true });
+                }
+            }
+        });
+
+        it('should handle missing track and artist metadata falling back to Unknown Artist and Unknown Track', async () => {
+            let localDataDirCreated = false;
+            if (!fs.existsSync(dataDir)) {
+                fs.mkdirSync(dataDir, { recursive: true });
+                localDataDirCreated = true;
+            }
+
+            const testJsonFile = path.join(dataDir, 'streaming_history_audio_2025_unknown_meta.json');
+            try {
+                const samplePayload = [
+                    {
+                        ts: '2025-06-15T14:00:00Z',
+                        ms_played: 120000,
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                fs.writeFileSync(testJsonFile, JSON.stringify(samplePayload));
+
+                const result = await runCli(['--year=2025', '--top=5'], { HOME_IP: '192.168.1.1' });
+                assert.equal(result.code, 0);
+                assert.match(result.stdout, /Unknown Track - Unknown Artist/);
+                assert.match(result.stdout, /Unknown Artist: 2m \(0.0h\)/);
+            } finally {
+                if (fs.existsSync(testJsonFile)) {
+                    fs.unlinkSync(testJsonFile);
+                }
+                if (localDataDirCreated && fs.existsSync(dataDir)) {
                     fs.rmSync(dataDir, { recursive: true, force: true });
                 }
             }
