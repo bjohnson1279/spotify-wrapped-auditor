@@ -54,7 +54,11 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
     let cumulativeSize = 0;
 
 
-    relevantFiles.forEach(file => {
+    // ⚡ Bolt: Replaced .forEach with a standard for-loop to eliminate callback overhead.
+    // Since this loop contains an inner hot loop iterating over massive arrays (up to 5 million records),
+    // eliminating the callback context reduces heap allocation and garbage collection overhead.
+    for (let fIdx = 0; fIdx < relevantFiles.length; fIdx++) {
+        const file = relevantFiles[fIdx];
         try {
             const fullPath = path.join(dataDir, file);
 
@@ -65,15 +69,15 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
                 const stats = fs.fstatSync(fd);
                 if (!stats.isFile()) {
                     console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Not a regular file (e.g., named pipe, device), preventing potential DoS.`);
-                    return;
+                    continue;
                 }
                 if (stats.size > MAX_FILE_SIZE) {
                     console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: File size exceeds 50MB limit, preventing memory exhaustion.`);
-                    return;
+                    continue;
                 }
                 if (cumulativeSize + stats.size > MAX_TOTAL_SIZE) {
                     console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Cumulative processing size exceeds 250MB limit, preventing memory exhaustion (DoS).`);
-                    return;
+                    continue;
                 }
 
                 raw = fs.readFileSync(fd, 'utf-8');
@@ -86,7 +90,7 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
             if (!Array.isArray(parsed)) {
                 console.warn(`[WARNING] Skipping file ${sanitizeLog(file)}: Expected an array but received a different JSON structure.`);
-                return;
+                continue;
             }
 
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
@@ -161,7 +165,7 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }
-    });
+    }
 
 
     // Sort by timestamp

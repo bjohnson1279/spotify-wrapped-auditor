@@ -105,3 +105,7 @@
 ## 2025-06-25 - Avoid substring for specific char comparisons
 **Learning:** Extracting parts of a string using `.substring()` to compare against specific string values (like month bounds) in hot loops incurs V8 string allocation and garbage collection overhead.
 **Action:** Extract specific characters using `charCodeAt()` and perform integer math (e.g., checking if `charCodeAt` evaluates to specific ASCII numbers like 48 for '0') to entirely eliminate string allocations in inner loops when doing targeted boundary checks.
+
+## 2025-05-18 - The Cost of Closures in Outer Loops
+**Learning:** Even if an array is small (e.g. `relevantFiles` with 3 items), using `.forEach()` to iterate over it introduces non-trivial overhead if the *callback body* contains a massive hot inner loop (like processing 500k+ JSON items). The closure context creates extra heap allocation and garbage collection pressure, preventing V8 from optimizing the inner hot path as effectively as a standard flat `for` loop.
+**Action:** When an outer loop contains a massive inner hot loop, replace array methods (`.forEach`, `.map`, `.filter`) with standard `for` loops to flatten the call stack and eliminate closure overhead entirely.
