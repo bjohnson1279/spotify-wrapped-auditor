@@ -109,3 +109,7 @@
 ## 2025-05-18 - The Cost of Closures in Outer Loops
 **Learning:** Even if an array is small (e.g. `relevantFiles` with 3 items), using `.forEach()` to iterate over it introduces non-trivial overhead if the *callback body* contains a massive hot inner loop (like processing 500k+ JSON items). The closure context creates extra heap allocation and garbage collection pressure, preventing V8 from optimizing the inner hot path as effectively as a standard flat `for` loop.
 **Action:** When an outer loop contains a massive inner hot loop, replace array methods (`.forEach`, `.map`, `.filter`) with standard `for` loops to flatten the call stack and eliminate closure overhead entirely.
+
+## 2025-06-25 - Avoid parallel dictionaries for hierarchical aggregates
+**Learning:** Maintaining separate dictionaries for hierarchical aggregates (e.g. `artistStats` alongside `trackStatsNested`) inside a hot loop causes redundant property lookups and instantiation overhead.
+**Action:** Group by the deepest level (e.g. Artist -> Track) during the hot loop. Derive the higher-level aggregates (e.g. Artist totals) later during the flattening phase.

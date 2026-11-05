@@ -64,7 +64,6 @@ const runAudit = () => {
     // 3. Aggregate
     // ⚡ Bolt: Use Object.create(null) for faster string-keyed dynamic dictionary lookups and inserts compared to Map in Node.js inner loops
     const trackStatsNested: Record<string, Record<string, TrackStats>> = Object.create(null);
-    const artistStats: Record<string, TrackStats> = Object.create(null);
     let musicMs = 0;
     let podcastMs = 0;
 
@@ -101,29 +100,25 @@ const runAudit = () => {
         }
         tStat.count++;
         tStat.time += ms_played;
-
-        let aStat = artistStats[artist];
-        if (aStat === undefined) {
-            aStat = { count: 0, time: 0 };
-            artistStats[artist] = aStat;
-        }
-        aStat.count++;
-        aStat.time += ms_played;
     }
 
     // Flatten nested stats
     // ⚡ Bolt: Convert Nested objects directly to the array structure needed by generateReport
+    // ⚡ Bolt: Consolidate artist stats derivation during flatten to save hot-loop dictionary lookups
     const trackStats: [string, TrackStats][] = [];
+    const finalArtistStats: [string, TrackStats][] = [];
+
     for (const artist in trackStatsNested) {
         const artistMap = trackStatsNested[artist];
+        let artistCount = 0;
+        let artistTime = 0;
         for (const track in artistMap) {
-            trackStats.push([track + ' - ' + artist + ' ', artistMap[track]]);
+            const tStat = artistMap[track];
+            artistCount += tStat.count;
+            artistTime += tStat.time;
+            trackStats.push([track + ' - ' + artist + ' ', tStat]);
         }
-    }
-
-    const finalArtistStats: [string, TrackStats][] = [];
-    for (const artist in artistStats) {
-        finalArtistStats.push([artist, artistStats[artist]]);
+        finalArtistStats.push([artist, { count: artistCount, time: artistTime }]);
     }
 
     // 4. Report
