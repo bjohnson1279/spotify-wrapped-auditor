@@ -30,27 +30,31 @@ export const generateReport = (trackStats: [string, TrackStats][], artistStats: 
         .sort((a, b) => b[1].count - a[1].count || b[1].time - a[1].time)
         .slice(0, config.TOP_N);
 
-    sortedSongs.forEach((s, i) => {
+    // ⚡ Bolt: Replace .forEach with a standard for loop for consistency and slightly better performance
+    for (let i = 0; i < sortedSongs.length; i++) {
+        const s = sortedSongs[i];
         console.log(`#${i + 1} ${sanitize(s[0])}: ${s[1].count} plays (${Math.floor(s[1].time / 60000)}m)`);
-    });
+    }
 
     console.log(`\n === TOP ${config.TOP_ARTISTS_N} ARTISTS (By Time) === `);
     const sortedArtistsByTime = [...artistStats]
         .sort((a, b) => b[1].time - a[1].time)
         .slice(0, config.TOP_ARTISTS_N);
 
-    sortedArtistsByTime.forEach((a, i) => {
+    for (let i = 0; i < sortedArtistsByTime.length; i++) {
+        const a = sortedArtistsByTime[i];
         const minutes = Math.floor(a[1].time / 60000);
         const hours = (a[1].time / 3600000).toFixed(1);
         console.log(`#${i + 1} ${sanitize(a[0])}: ${minutes}m (${hours}h)`);
-    });
+    }
 
     console.log(`\n === TOP ${config.TOP_ARTISTS_N} ARTISTS (By Play Count) === `);
     const sortedArtistsByCount = artistStats
         .sort((a, b) => b[1].count - a[1].count || b[1].time - a[1].time)
         .slice(0, config.TOP_ARTISTS_N);
 
-    sortedArtistsByCount.forEach((a, i) => {
+    for (let i = 0; i < sortedArtistsByCount.length; i++) {
+        const a = sortedArtistsByCount[i];
         console.log(`#${i + 1} ${sanitize(a[0])}: ${a[1].count} plays`);
-    });
+    }
 };
