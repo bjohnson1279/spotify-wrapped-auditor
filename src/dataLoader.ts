@@ -86,8 +86,11 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
             // Using loop to avoid RangeError: Maximum call stack size exceeded for large arrays
             // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Too_many_arguments
 
-            for (let i = 0; i < parsed.length; i++) {
-                if (rawEvents.length >= 5000000) {
+            const parsedLen = parsed.length;
+            let outIdx = rawEvents.length;
+            rawEvents.length += parsedLen;
+            for (let i = 0; i < parsedLen; i++) {
+                if (outIdx >= 5000000) {
                     console.warn(`[WARNING] Maximum event limit (5,000,000) reached. Stopping further ingestion to prevent memory exhaustion.`);
                     break;
                 }
@@ -149,9 +152,10 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
                 if (isMalicious) continue;
 
-                // ⚡ Bolt: Use .push() for chunk merging instead of length expansion and manual indexing to prevent V8 from transitioning the array to a slow HOLEY_ELEMENTS structure.
-                rawEvents.push(item);
+                // ⚡ Bolt: Expand array length by chunk and assign via manual index to reduce dynamic reallocation overhead for massive arrays
+                rawEvents[outIdx++] = item;
             }
+            rawEvents.length = outIdx;
         } catch (error) {
             console.warn(`[WARNING] Failed to read or parse file ${sanitizeLog(file)}. It may be corrupted or not valid JSON.`);
         }

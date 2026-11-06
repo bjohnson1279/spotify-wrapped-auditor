@@ -105,3 +105,7 @@
 ## 2025-06-25 - Avoid substring for specific char comparisons
 **Learning:** Extracting parts of a string using `.substring()` to compare against specific string values (like month bounds) in hot loops incurs V8 string allocation and garbage collection overhead.
 **Action:** Extract specific characters using `charCodeAt()` and perform integer math (e.g., checking if `charCodeAt` evaluates to specific ASCII numbers like 48 for '0') to entirely eliminate string allocations in inner loops when doing targeted boundary checks.
+
+## 2025-06-16 - V8 Array length expansion vs push
+**Learning:** Expanding the target array's length by the chunk size (`arr.length += chunkLength`) and assigning items via manual index tracking (`arr[idx++] = item`) is measurably faster than `Array.prototype.push()` in Node.js when merging chunks sequentially, as it reduces dynamic array reallocation overhead despite previous concerns about HOLEY_ELEMENTS transitions in certain edge cases.
+**Action:** Use manual length expansion (`arr.length += chunk.length`) and index assignment when incrementally merging arrays in performance-critical loops.
