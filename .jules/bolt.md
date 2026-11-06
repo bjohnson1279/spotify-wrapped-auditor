@@ -105,3 +105,7 @@
 ## 2025-06-25 - Avoid substring for specific char comparisons
 **Learning:** Extracting parts of a string using `.substring()` to compare against specific string values (like month bounds) in hot loops incurs V8 string allocation and garbage collection overhead.
 **Action:** Extract specific characters using `charCodeAt()` and perform integer math (e.g., checking if `charCodeAt` evaluates to specific ASCII numbers like 48 for '0') to entirely eliminate string allocations in inner loops when doing targeted boundary checks.
+
+## 2026-11-06 - Remove Unused Variable Allocations in Hot Loops
+**Learning:** In V8, defining local variables inside a massive loop with fallback evaluations (like `const artist = obj.artist || 'Unknown';`) incurs measurable overhead even if the variable is never used subsequently in the loop block.
+**Action:** Strictly audit inner loops in performance-critical paths (e.g., massive array processing) for unused variables and remove them to eliminate unnecessary evaluations and memory allocations.

@@ -63,8 +63,6 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         if (e.reason_end === 'unknown' && e.ms_played < 32000) continue;
 
         const isIPv4 = homeIp ? e.ip_addr === homeIp : false;
-        const artist = e.master_metadata_album_artist_name || 'Unknown Artist';
-        const track = e.master_metadata_track_name || 'Unknown Track';
         const currTrack = e.master_metadata_track_name;
         const currArtist = e.master_metadata_album_artist_name;
 
