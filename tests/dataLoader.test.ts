@@ -471,4 +471,289 @@ describe('dataLoader module', () => {
             cleanupTempDir(dir);
         }
     });
+
+    describe('Ingestion & Sorting Edge Cases', () => {
+        it('should handle empty directory, no matching files, or empty JSON array gracefully', () => {
+            const dir = createTempDir();
+            try {
+                // Case 1: Empty directory returns empty array
+                const emptyRes = loadAndDedupEvents(dir);
+                assert.deepEqual(emptyRes, []);
+
+                // Case 2: Files exist, but none match the requested year
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2023.json'), JSON.stringify([{
+                    ts: '2023-05-01T10:00:00Z',
+                    ms_played: 60000,
+                    master_metadata_track_name: '2023 Song'
+                }]));
+                const yearMismatchRes = loadAndDedupEvents(dir, 2025);
+                assert.deepEqual(yearMismatchRes, []);
+
+                // Case 3: File contains empty array `[]`
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_empty.json'), '[]');
+                const emptyArrayRes = loadAndDedupEvents(dir, 2025);
+                assert.deepEqual(emptyArrayRes, []);
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+
+        it('should strictly validate ISO 8601 structural format and reject malformed timestamps', () => {
+            const dir = createTempDir();
+            try {
+                const malformedItems = [
+                    // Length not exactly 20 characters
+                    { ts: '2025-01-01T10:00:00.000Z', ms_played: 60000, master_metadata_track_name: 'Long ISO' },
+                    { ts: '2025-01-01T10:00:00', ms_played: 60000, master_metadata_track_name: 'Missing Z' },
+                    { ts: '2025-01-01', ms_played: 60000, master_metadata_track_name: 'Date Only' },
+                    // Wrong delimiters
+                    { ts: '2025/01/01T10:00:00Z', ms_played: 60000, master_metadata_track_name: 'Slashes' },
+                    { ts: '2025-01/01T10:00:00Z', ms_played: 60000, master_metadata_track_name: 'Mixed Slash' },
+                    { ts: '2025-01-01 10:00:00Z', ms_played: 60000, master_metadata_track_name: 'Space Instead of T' },
+                    // Valid item
+                    { ts: '2025-01-01T10:00:00Z', ms_played: 60000, master_metadata_track_name: 'Valid ISO Track' }
+                ];
+
+                fs.writeFileSync(path.join(dir, 'data_2025.json'), JSON.stringify(malformedItems));
+
+                const result = loadAndDedupEvents(dir);
+                assert.equal(result.length, 1);
+                assert.equal(result[0].master_metadata_track_name, 'Valid ISO Track');
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+
+        it('should sort chronologically out-of-order events across multiple files before deduplicating', () => {
+            const dir = createTempDir();
+            try {
+                // File 1 has later events, File 2 has earlier events
+                const eventsFile1 = [
+                    {
+                        ts: '2025-05-15T12:03:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Ordered Track',
+                        reason_end: 'trackdone'
+                    }
+                ];
+                const eventsFile2 = [
+                    {
+                        ts: '2025-05-15T12:00:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Ordered Track',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_b.json'), JSON.stringify(eventsFile1));
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_a.json'), JSON.stringify(eventsFile2));
+
+                const result = loadAndDedupEvents(dir);
+                // Because they are sorted chronologically first, File 2 (12:00:00) then File 1 (12:03:00)
+                // form a Tier 1 duplicate clone and deduplicate to 1 event
+                assert.equal(result.length, 1);
+                assert.equal(result[0].ts, '2025-05-15T12:03:00Z');
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+    });
+
+    describe('Multi-Tier Deduplication Boundary Conditions', () => {
+        it('should collapse chained sequences of 3 or more duplicate events into a single event', () => {
+            const dir = createTempDir();
+            try {
+                // 3 identical plays back-to-back:
+                // 1) 12:00:00 - 12:03:00 (180s)
+                // 2) 12:03:00 - 12:06:00 (180s)
+                // 3) 12:06:00 - 12:09:00 (180s)
+                const events = [
+                    {
+                        ts: '2025-05-15T12:03:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Chained Track',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T12:06:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Chained Track',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T12:09:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Chained Track',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                fs.writeFileSync(path.join(dir, 'data_2025.json'), JSON.stringify(events));
+
+                const result = loadAndDedupEvents(dir);
+                assert.equal(result.length, 1);
+                assert.equal(result[0].ts, '2025-05-15T12:09:00Z');
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+
+        it('Tier 1: should enforce exact clone boundaries (gapMs >= 10, ms_played mismatch, reason_end mismatch)', () => {
+            const dir = createTempDir();
+            try {
+                // Event 1 ends at 12:00:00 (currStartTime = 11:57:00)
+                // Event 2 ends at 12:03:00 with ms_played=179989 -> currStartTime = 12:00:00.011 (gap = 11ms >= 10ms)
+                const eventsGapExceeded = [
+                    {
+                        ts: '2025-05-15T12:00:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Boundary Track',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T12:03:00Z',
+                        ms_played: 179989,
+                        master_metadata_track_name: 'Boundary Track',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                fs.writeFileSync(path.join(dir, 'data_gap.json'), JSON.stringify(eventsGapExceeded));
+                const resGap = loadAndDedupEvents(dir);
+                // Not deduplicated because gapMs is 11ms >= 10ms and ms_played differs
+                assert.equal(resGap.length, 2);
+
+                // Different reason_end with gapMs < 10 (falls into Tier 2 if gapMs < 1000)
+                // If ms_played also differs, Tier 1 and Tier 2 both fail
+                const eventsDiffPlayed = [
+                    {
+                        ts: '2025-05-15T12:00:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Diff Played Track',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T12:03:00Z',
+                        ms_played: 175000, // different duration, currStartTime = 12:00:05, gap = 5000ms
+                        master_metadata_track_name: 'Diff Played Track',
+                        reason_end: 'trackdone'
+                    }
+                ];
+                fs.writeFileSync(path.join(dir, 'data_diff.json'), JSON.stringify(eventsDiffPlayed));
+                fs.unlinkSync(path.join(dir, 'data_gap.json'));
+                const resDiff = loadAndDedupEvents(dir);
+                assert.equal(resDiff.length, 2);
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+
+        it('Tier 2: should enforce glitched double log boundaries (gapMs >= 1000 or ms_played mismatch)', () => {
+            const dir = createTempDir();
+            try {
+                // Event 1 ends at 12:00:00
+                // Event 2 ends at 12:03:02 with ms_played=180000 -> currStartTime = 12:00:02 (gap = 2000ms >= 1000ms)
+                const eventsLargeGap = [
+                    {
+                        ts: '2025-05-15T12:00:00Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Glitch Boundary',
+                        reason_end: 'unexpectedexit'
+                    },
+                    {
+                        ts: '2025-05-15T12:03:02Z',
+                        ms_played: 180000,
+                        master_metadata_track_name: 'Glitch Boundary',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                fs.writeFileSync(path.join(dir, 'data_tier2.json'), JSON.stringify(eventsLargeGap));
+                const resTier2 = loadAndDedupEvents(dir);
+                // Gap is 2000ms >= 1000ms, not deduplicated by Tier 2
+                assert.equal(resTier2.length, 2);
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+
+        it('Tier 3: should enforce overlapping play boundaries (overlapMs <= 0, non-trackdone, duration limits)', () => {
+            const dir = createTempDir();
+            try {
+                // Case 1: overlapMs <= 0 (gapMs > 0 without Tier 1 or Tier 2 match)
+                // Event 1 ends at 12:02:00 (ms_played = 120000, start = 12:00:00)
+                // Event 2 ends at 12:04:05 (ms_played = 120000, start = 12:02:05) -> gap = 5000ms, overlapMs = -5000ms
+                const eventsNoOverlap = [
+                    {
+                        ts: '2025-05-15T12:02:00Z',
+                        ms_played: 120000,
+                        master_metadata_track_name: 'No Overlap',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T12:04:05Z',
+                        ms_played: 120000,
+                        master_metadata_track_name: 'No Overlap',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                // Case 2: Overlapping plays where reason_end is NOT trackdone (e.g. 'fwdbtn')
+                const eventsNonTrackdone = [
+                    {
+                        ts: '2025-05-15T13:02:00Z',
+                        ms_played: 120000,
+                        master_metadata_track_name: 'Non Trackdone Overlap',
+                        reason_end: 'fwdbtn'
+                    },
+                    {
+                        ts: '2025-05-15T13:02:30Z',
+                        ms_played: 120000,
+                        master_metadata_track_name: 'Non Trackdone Overlap',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                // Case 3: Overlapping plays where ms_played is outside (30000, 160000)
+                // e.g. ms_played = 30000 (not > 30000) or ms_played = 160000 (not < 160000)
+                const eventsOutsideDuration = [
+                    {
+                        ts: '2025-05-15T14:00:30Z',
+                        ms_played: 30000, // exactly 30000ms, not > 30000
+                        master_metadata_track_name: 'Short Overlap',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T14:00:40Z',
+                        ms_played: 120000,
+                        master_metadata_track_name: 'Short Overlap',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T15:03:00Z',
+                        ms_played: 160000, // exactly 160000ms, not < 160000
+                        master_metadata_track_name: 'Long Overlap',
+                        reason_end: 'trackdone'
+                    },
+                    {
+                        ts: '2025-05-15T15:03:30Z',
+                        ms_played: 120000,
+                        master_metadata_track_name: 'Long Overlap',
+                        reason_end: 'trackdone'
+                    }
+                ];
+
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_no_overlap.json'), JSON.stringify(eventsNoOverlap));
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_non_trackdone.json'), JSON.stringify(eventsNonTrackdone));
+                fs.writeFileSync(path.join(dir, 'streaming_history_audio_2025_outside_duration.json'), JSON.stringify(eventsOutsideDuration));
+
+                const resNoOverlap = loadAndDedupEvents(dir, 2025);
+                // All events should be preserved without deduplication
+                // 2 (no_overlap) + 2 (non_trackdone) + 4 (outside_duration) = 8
+                assert.equal(resNoOverlap.length, 8);
+            } finally {
+                cleanupTempDir(dir);
+            }
+        });
+    });
 });
