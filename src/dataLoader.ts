@@ -98,7 +98,8 @@ export const loadAndDedupEvents = (dataDir: string, year?: number): SpotifyAudio
 
                 // Cache primitive properties for strict boundary validation to avoid repeated property lookup
                 const ts = item.ts;
-                if (typeof ts !== 'string' || ts.length > 50) continue;
+                // 🛡️ Sentinel: Strictly validate ISO 8601 format to prevent NaN propagation and logic bypasses in fast-path parser
+                if (typeof ts !== 'string' || ts.length !== 20 || ts[4] !== '-' || ts[7] !== '-' || ts[10] !== 'T' || ts[19] !== 'Z') continue;
 
                 const ms_played = item.ms_played;
                 if (typeof ms_played !== 'number' || !Number.isFinite(ms_played) || ms_played < 0) continue;

@@ -5,9 +5,8 @@ import { loadAndDedupEvents } from './src/dataLoader.js';
 import { applyWrappedFilters, applyStandardFilters } from './src/filters.js';
 import { generateReport, TrackStats } from './src/reporter.js';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-
 const runAudit = () => {
+    const DATA_DIR = path.join(process.cwd(), 'data');
     // CLI Args
     const args = process.argv.slice(2);
     const yearArg = args.find(a => a.startsWith('--year='))?.split('=')[1];

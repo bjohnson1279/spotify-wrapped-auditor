@@ -168,3 +168,8 @@
 **Vulnerability:** Error messages originating from system operations (like `error.code`) were concatenated into `console.error` logs. Without type checking and string casting before sanitization, unexpected error types could bypass string protections.
 **Learning:** System error codes need explicit casting to strings before applying string replacements like ANSI escape code removal.
 **Prevention:** Ensure variables from error objects are explicitly cast to string (e.g. `String((error as any).code)`) and then sanitized before logging them to the terminal.
+
+## 2026-11-02 - NaN Propagation via Malformed Timestamps
+**Vulnerability:** The application's custom high-performance `parseISO` function assumed exactly formatted `YYYY-MM-DDTHH:mm:ssZ` ISO strings, performing arithmetic using `charCodeAt` at fixed indices. However, untrusted inputs were only checked for `length > 50`. Malformed strings shorter than 20 characters or with incorrectly placed delimiters could silently cause `parseISO` to compute `NaN` or incorrect integers, propagating undefined behavior into logic-critical boundary checks without throwing an error.
+**Learning:** High-performance index-based string parsers are exceptionally brittle. When dealing with untrusted user input, assuming the internal format of a string just because it passed a loose length check exposes the logic layer to garbage data (`NaN`), leading to business logic bypass or undefined state.
+**Prevention:** Strictly validate the exact structure and length of incoming strings (e.g., `ts.length !== 20 || ts[4] !== '-'`) at the ingestion layer before passing them to fast-path custom parsers.
