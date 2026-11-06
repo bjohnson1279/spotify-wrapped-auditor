@@ -9,14 +9,14 @@ describe('CLI Orchestration & Argument Boundaries', () => {
     const cliScriptPath = path.resolve('dist/index.js');
     const projectRoot = process.cwd();
 
-    const runCli = (args: string[], customEnv?: NodeJS.ProcessEnv): Promise<{ code: number | null; stdout: string; stderr: string }> => {
+    const runCli = (args: string[], customEnv?: NodeJS.ProcessEnv, workingDir: string = projectRoot): Promise<{ code: number | null; stdout: string; stderr: string }> => {
         return new Promise((resolve) => {
             const mergedEnv = customEnv ? { ...customEnv } : { ...process.env };
             execFile(
                 process.execPath,
                 [cliScriptPath, ...args],
                 {
-                    cwd: projectRoot,
+                    cwd: workingDir,
                     env: mergedEnv
                 },
                 (error, stdout, stderr) => {
@@ -75,14 +75,19 @@ describe('CLI Orchestration & Argument Boundaries', () => {
     describe('Error Boundary Sanitization & Path Redaction', () => {
         it('should redact current working directory to [REDACTED_PATH] and home to [REDACTED_HOME]', async () => {
             // When data/ is missing (or fails to read), safe error is thrown and caught by runAudit() catch block
-            const result = await runCli(['--year=2025']);
-            assert.equal(result.code, 1);
-            assert.match(result.stderr, /\[ERROR\] Audit failed:/);
-            // Verify no unhandled stack trace or raw sensitive paths leaked
-            assert.ok(!result.stderr.includes(projectRoot));
-            assert.ok(!result.stderr.includes(os.homedir()));
-            // Should contain no raw ANSI escape sequences
-            assert.ok(!/\x1B\[[0-9;]*[a-zA-Z]/.test(result.stderr));
+            const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spotify-audit-empty-'));
+            try {
+                const result = await runCli(['--year=2025'], undefined, emptyDir);
+                assert.equal(result.code, 1);
+                assert.match(result.stderr, /\[ERROR\] Audit failed:/);
+                // Verify no unhandled stack trace or raw sensitive paths leaked
+                assert.ok(!result.stderr.includes(projectRoot));
+                assert.ok(!result.stderr.includes(os.homedir()));
+                // Should contain no raw ANSI escape sequences
+                assert.ok(!/\x1B\[[0-9;]*[a-zA-Z]/.test(result.stderr));
+            } finally {
+                fs.rmSync(emptyDir, { recursive: true, force: true });
+            }
         });
 
         it('should handle non-Error thrown exceptions gracefully in top-level catch block', async () => {
@@ -136,14 +141,10 @@ describe('CLI Orchestration & Argument Boundaries', () => {
     });
 
     describe('End-to-End CLI Pipeline Execution With Temporary Data', () => {
-        const dataDir = path.join(projectRoot, 'data');
-        let dataDirCreated = false;
-
         it('should execute full audit pipeline successfully via CLI with valid data directory', async () => {
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
-                dataDirCreated = true;
-            }
+            const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spotify-audit-e2e-'));
+            const dataDir = path.join(tempDir, 'data');
+            fs.mkdirSync(dataDir, { recursive: true });
 
             const testJsonFile = path.join(dataDir, 'streaming_history_audio_2025_cli_test.json');
             try {
@@ -166,7 +167,7 @@ describe('CLI Orchestration & Argument Boundaries', () => {
 
                 fs.writeFileSync(testJsonFile, JSON.stringify(samplePayload));
 
-                const result = await runCli(['--year=2025', '--top=10'], { HOME_IP: '192.168.1.1' });
+                const result = await runCli(['--year=2025', '--top=10'], { HOME_IP: '192.168.1.1' }, tempDir);
                 assert.equal(result.code, 0);
                 assert.match(result.stdout, /Loaded and deduplicated 2 total events/);
                 assert.match(result.stdout, /Music Listening: 0 hours/);
@@ -176,21 +177,14 @@ describe('CLI Orchestration & Argument Boundaries', () => {
                 assert.match(result.stdout, /TOP 20 ARTISTS \(By Time\)/);
                 assert.match(result.stdout, /Led Zeppelin: 3m \(0.1h\)/);
             } finally {
-                if (fs.existsSync(testJsonFile)) {
-                    fs.unlinkSync(testJsonFile);
-                }
-                if (dataDirCreated && fs.existsSync(dataDir)) {
-                    fs.rmSync(dataDir, { recursive: true, force: true });
-                }
+                fs.rmSync(tempDir, { recursive: true, force: true });
             }
         });
 
         it('should handle missing track and artist metadata falling back to Unknown Artist and Unknown Track', async () => {
-            let localDataDirCreated = false;
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
-                localDataDirCreated = true;
-            }
+            const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spotify-audit-e2e-'));
+            const dataDir = path.join(tempDir, 'data');
+            fs.mkdirSync(dataDir, { recursive: true });
 
             const testJsonFile = path.join(dataDir, 'streaming_history_audio_2025_unknown_meta.json');
             try {
@@ -204,17 +198,12 @@ describe('CLI Orchestration & Argument Boundaries', () => {
 
                 fs.writeFileSync(testJsonFile, JSON.stringify(samplePayload));
 
-                const result = await runCli(['--year=2025', '--top=5'], { HOME_IP: '192.168.1.1' });
+                const result = await runCli(['--year=2025', '--top=5'], { HOME_IP: '192.168.1.1' }, tempDir);
                 assert.equal(result.code, 0);
                 assert.match(result.stdout, /Unknown Track - Unknown Artist/);
                 assert.match(result.stdout, /Unknown Artist: 2m \(0.0h\)/);
             } finally {
-                if (fs.existsSync(testJsonFile)) {
-                    fs.unlinkSync(testJsonFile);
-                }
-                if (localDataDirCreated && fs.existsSync(dataDir)) {
-                    fs.rmSync(dataDir, { recursive: true, force: true });
-                }
+                fs.rmSync(tempDir, { recursive: true, force: true });
             }
         });
     });
