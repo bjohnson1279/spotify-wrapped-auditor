@@ -115,3 +115,46 @@ Formats aggregated stats into clean, terminal-safe output tables.
   - Strips ANSI escape codes and control characters from untrusted strings before logging to stdout to eliminate log/terminal injection vulnerabilities.
   - Displays top tracks ranked by play count and listening time.
   - Displays top artists ranked both by total listening time and by stream play count.
+
+---
+
+## Data Model & Schema Reference
+
+### `SpotifyAudioEvent` (`interface/SpotifyAudioEvent.ts`)
+
+The primary data model representing an individual streaming event ingested from Spotify Extended Streaming History export files (`streaming_history_audio_*.json`).
+
+| Property | Type | Nullable | Description & Pipeline Usage |
+| :--- | :--- | :--- | :--- |
+| `ts` | `string` | No | UTC timestamp of stream completion formatted in ISO 8601 (`YYYY-MM-DDTHH:mm:ssZ`). Used for chronological ordering, date range boundaries, and fast integer timestamp comparisons via `parseISO()`. |
+| `platform` | `string` | No | Operating system and client platform identifier (e.g., `iOS`, `Android`, `OS X`). |
+| `ms_played` | `number` | No | Milliseconds the audio track or episode was actively played. Evaluated against minimum thresholds (e.g., 30,000 ms) and duration heuristics. |
+| `conn_country` | `string` | No | Country code of playback connection (e.g., `US`). |
+| `ip_addr` | `string` | No | Client IP address at playback time. Compared against `process.env.HOME_IP` to enable contextual home IPv4 network filtering heuristics. |
+| `master_metadata_track_name` | `string` | Yes | Title of the music track. When null, track is treated as non-music or fallback (`Unknown Track`). |
+| `master_metadata_album_artist_name` | `string` | Yes | Primary artist name of the track. Used for grouping stats, artist leaderboards, and artist-specific filter rules (e.g., `311`). |
+| `master_metadata_album_album_name` | `string` | Yes | Album title containing the track. |
+| `spotify_track_uri` | `string` | Yes | Spotify URI identifier for the track (e.g., `spotify:track:<id>`). |
+| `episode_name` | `string` | Yes | Title of podcast episode. When present, playback time is categorized under podcast listening and excluded from music stats. |
+| `episode_show_name` | `string` | Yes | Name of podcast show or podcast series. |
+| `spotify_episode_uri` | `string` | Yes | Spotify URI identifier for the podcast episode. |
+| `audiobook_title` | `string` | Yes | Title of audiobook. Non-null values indicate audiobook content and are filtered out of Wrapped music stats. |
+| `audiobook_uri` | `string` | Yes | Spotify URI identifier for the audiobook. |
+| `audiobook_chapter_uri` | `string` | Yes | Spotify URI identifier for the audiobook chapter. |
+| `audiobook_chapter_title` | `string` | Yes | Title of the audiobook chapter. |
+| `reason_start` | `string` | No | Trigger for playback start (e.g., `clickrow`, `trackdone`, `playbtn`). |
+| `reason_end` | `string` | No | Trigger for playback termination (e.g., `trackdone`, `fwdbtn`, `logout`, `endplay`, `unknown`). Core input for glitch, boundary, and redundancy filters. |
+| `shuffle` | `boolean` | No | Indicates whether shuffle mode was active during playback. |
+| `skipped` | `boolean` | Yes | Indicates whether playback was explicitly skipped by user before track completion. |
+| `offline` | `boolean` | No | Indicates whether playback occurred in offline mode. |
+| `offline_timestamp` | `number` | Yes | Unix epoch timestamp recorded when playback started while offline. |
+| `incognito_mode` | `boolean` | No | Indicates whether the playback occurred within a private / incognito listening session. |
+
+### Supporting Interfaces (`interface/`)
+
+- **`BaseStreamEvent` (`interface/BaseStreamEvent.ts`)**: Minimal common base interface defining core playback properties (`ts`, `ms_played`, `reason_end`).
+- **`MusicEvent` (`interface/MusicEvent.ts`)**: Discriminated music event schema requiring non-null track and artist names with null `episode_name`.
+- **`PodcastEvent` (`interface/PodcastEvent.ts`)**: Placeholder interface reserved for future podcast-specific streaming schema definitions.
+- **`SpotifyStreamEvent` (`interface/SpotifyStreamEvent.ts`)**: Alternative/extended schema representation featuring raw IP and user agent decoders (`ip_addr_dec`, `user_agent_dec`).
+- **`StatsBucket` (`interface/StatsBucket.ts`)**: Generic numerical aggregation container storing cumulative `totalMs` and `playCount`.
+- **`WrappedStats` (`interface/WrappedStats.ts`)**: Higher-level structure modeling overall listening statistics (`totalMsPlayed`, `artistPlayTime`, `trackPlayCounts`).
