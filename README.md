@@ -130,6 +130,31 @@ A standalone benchmarking script is provided to test pipeline execution speed ac
 node benchmark_full.cjs
 ```
 
+### Diagnostic & Exploratory Analysis Scripts (`scripts/`)
+
+The repository includes exploratory analysis and debugging scripts located in `scripts/`. These utilities inspect raw event data directly to identify streaming anomalies, evaluate edge cases, and tune heuristic rules:
+
+- **`scripts/check_gaps.ts`**: Identifies consecutive playback intervals and gaps (< 300s) for target tracks.
+- **`scripts/check_incognito.ts`**: Audits private and incognito listening sessions in raw history files.
+- **`scripts/check_neighbors.ts`**: Inspects immediate neighboring plays around a specific timestamp.
+- **`scripts/check_times.ts`**: Compares exact play timestamps and track durations for target entries.
+- **`scripts/debug_song.ts`**: Traces the lifecycle and filtering decisions for a given track across the pipeline.
+- **`scripts/dump_json.ts`**: Dumps detailed JSON metadata surrounding a target playback timestamp.
+- **`scripts/find_logouts.ts`**: Scans for `logout` termination events and filters by network/date boundaries.
+- **`scripts/compare_short_plays.ts` & `scripts/list_short_plays.ts`**: Analyzes short play candidates (< 60s) to evaluate redundancy suppression.
+
+Run compiled diagnostic scripts with `node`:
+```bash
+npm run build
+node dist/scripts/find_logouts.js
+```
+Or execute directly with `ts-node`:
+```bash
+npx ts-node-esm scripts/find_logouts.ts
+```
+
+For author background and the initial research methodology behind the Wrapped cutoff investigations, see [`about.md`](about.md).
+
 ## How It Works
 
 Spotify Wrapped does not count every recorded play. This tool implements the multi-tier audit pipeline:
