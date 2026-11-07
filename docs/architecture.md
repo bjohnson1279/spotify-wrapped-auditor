@@ -118,6 +118,21 @@ Formats aggregated stats into clean, terminal-safe output tables.
 
 ---
 
+### 4. Diagnostic & Exploratory Analysis Scripts (`scripts/`)
+
+A suite of diagnostic tools designed for inspecting raw event sequences in `data/`, tracing edge cases, and verifying algorithmic heuristics:
+
+- **`scripts/check_gaps.ts`**: Analyzes timestamp differentials between consecutive occurrences of a target track to discover split plays and glitch windows.
+- **`scripts/check_incognito.ts`**: Audits events where `incognito_mode: true` to determine their effect on play qualification.
+- **`scripts/check_neighbors.ts`**: Fetches and inspects events immediately preceding and following a specific target timestamp.
+- **`scripts/check_times.ts`**: Verifies exact play durations and timestamps across specific target tracks.
+- **`scripts/debug_song.ts`**: Evaluates all events for a specific song against the filtering engine rules to trace filtering decisions.
+- **`scripts/dump_json.ts`**: Extracts full raw JSON payloads around a target timestamp for low-level inspection.
+- **`scripts/find_logouts.ts`**: Identifies all events ending with `reason_end: 'logout'` to refine boundary logout heuristics (Rule 2).
+- **`scripts/compare_short_plays.ts` & `scripts/list_short_plays.ts`**: Compares consecutive sub-60-second plays to evaluate redundancy suppression rules (Rule 3).
+
+---
+
 ## Data Model & Schema Reference
 
 ### `SpotifyAudioEvent` (`interface/SpotifyAudioEvent.ts`)
