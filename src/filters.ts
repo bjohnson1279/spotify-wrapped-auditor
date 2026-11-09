@@ -39,6 +39,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
     const em2 = endMonthStr.charCodeAt(1);
     const ed1 = endDayStr.charCodeAt(0);
     const ed2 = endDayStr.charCodeAt(1);
+    // ⚡ Bolt: Cache config.MIN_MS_PLAYED outside the hot loop to avoid redundant V8 property lookups
+    const minMsPlayed = config.MIN_MS_PLAYED;
 
     const len = deduped.length;
     // ⚡ Bolt: Pre-allocate array instead of using .push() to eliminate dynamic resizing overhead
@@ -63,7 +65,7 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
         const e = deduped[index];
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
         if (e.ts > endDateStr) break; // Events are sorted chronologically, break early
-        if (e.ms_played < config.MIN_MS_PLAYED) continue;
+        if (e.ms_played < minMsPlayed) continue;
 
         // Handle unknown reason for short plays (likely glitches)
         if (e.reason_end === 'unknown' && e.ms_played < 32000) continue;
@@ -174,6 +176,8 @@ export const applyWrappedFilters = (deduped: SpotifyAudioEvent[], config: AuditC
 export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: AuditConfig): SpotifyAudioEvent[] => {
     const startDateStr = config.START_DATE.toISOString();
     const endDateStr = config.END_DATE.toISOString();
+    // ⚡ Bolt: Cache config.MIN_MS_PLAYED outside the hot loop to avoid redundant V8 property lookups
+    const minMsPlayed = config.MIN_MS_PLAYED;
 
     const len = deduped.length;
     // ⚡ Bolt: Pre-allocate array instead of using .push() to eliminate dynamic resizing overhead
@@ -197,7 +201,7 @@ export const applyStandardFilters = (deduped: SpotifyAudioEvent[], config: Audit
         const e = deduped[i];
         // ⚡ Bolt: Fast string comparison instead of expensive Date parsing for boundaries
         if (e.ts > endDateStr) break; // Events are sorted chronologically, break early
-        if (e.ms_played < config.MIN_MS_PLAYED) continue;
+        if (e.ms_played < minMsPlayed) continue;
         if (e.audiobook_title) continue;
         result[resultIdx++] = e;
     }
