@@ -126,9 +126,11 @@ A suite of diagnostic tools designed for inspecting raw event sequences in `data
 - **`scripts/check_incognito.ts`**: Audits events where `incognito_mode: true` to determine their effect on play qualification.
 - **`scripts/check_neighbors.ts`**: Fetches and inspects events immediately preceding and following a specific target timestamp.
 - **`scripts/check_times.ts`**: Verifies exact play durations and timestamps across specific target tracks.
+- **`scripts/compare_internals.ts`**: Inspects internal playback metadata (offline timestamps, IPs, reason_end) for candidate matches.
 - **`scripts/debug_song.ts`**: Evaluates all events for a specific song against the filtering engine rules to trace filtering decisions.
 - **`scripts/dump_json.ts`**: Extracts full raw JSON payloads around a target timestamp for low-level inspection.
 - **`scripts/find_logouts.ts`**: Identifies all events ending with `reason_end: 'logout'` to refine boundary logout heuristics (Rule 2).
+- **`scripts/list_short_discrepancies.ts`**: Scans short plays (30s–60s) for specific discrepancy songs across playback triggers.
 - **`scripts/compare_short_plays.ts` & `scripts/list_short_plays.ts`**: Compares consecutive sub-60-second plays to evaluate redundancy suppression rules (Rule 3).
 
 ---
