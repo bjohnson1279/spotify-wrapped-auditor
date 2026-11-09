@@ -138,9 +138,11 @@ The repository includes exploratory analysis and debugging scripts located in `s
 - **`scripts/check_incognito.ts`**: Audits private and incognito listening sessions in raw history files.
 - **`scripts/check_neighbors.ts`**: Inspects immediate neighboring plays around a specific timestamp.
 - **`scripts/check_times.ts`**: Compares exact play timestamps and track durations for target entries.
+- **`scripts/compare_internals.ts`**: Inspects internal playback metadata (offline timestamps, IPs, reason_end) for candidate matches.
 - **`scripts/debug_song.ts`**: Traces the lifecycle and filtering decisions for a given track across the pipeline.
 - **`scripts/dump_json.ts`**: Dumps detailed JSON metadata surrounding a target playback timestamp.
 - **`scripts/find_logouts.ts`**: Scans for `logout` termination events and filters by network/date boundaries.
+- **`scripts/list_short_discrepancies.ts`**: Scans short plays (30s–60s) for specific discrepancy songs across playback triggers.
 - **`scripts/compare_short_plays.ts` & `scripts/list_short_plays.ts`**: Analyzes short play candidates (< 60s) to evaluate redundancy suppression.
 
 Run compiled diagnostic scripts with `node`:
