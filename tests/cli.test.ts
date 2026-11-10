@@ -49,6 +49,13 @@ describe('CLI Orchestration & Argument Boundaries', () => {
             assert.match(result.stderr, /Invalid year provided/);
         });
 
+        it('should exit with error code 1 when year contains invalid suffix bypassing parseInt (e.g. 2025malicious)', async () => {
+            // 🛡️ Sentinel: Ensure strict Number() validation over loose parseInt() truncation
+            const result = await runCli(['--year=2025malicious']);
+            assert.equal(result.code, 1);
+            assert.match(result.stderr, /Invalid year provided/);
+        });
+
         it('should exit with error code 1 when TOP_N is 0 or negative', async () => {
             const res0 = await runCli(['--top=0']);
             assert.equal(res0.code, 1);
