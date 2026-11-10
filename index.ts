@@ -19,8 +19,8 @@ const runAudit = () => {
     const allTime = args.includes('--all-time');
     const topNArg = args.find(a => a.startsWith('--top='))?.split('=')[1];
 
-    const year = yearArg ? parseInt(yearArg, 10) : 2025;
-    const TOP_N = topNArg ? parseInt(topNArg, 10) : 200;
+    const year = yearArg ? Number(yearArg) : 2025;
+    const TOP_N = topNArg ? Number(topNArg) : 200;
 
     // Validate CLI inputs
     if (!Number.isFinite(year) || year < 1970 || year > 2100) {
