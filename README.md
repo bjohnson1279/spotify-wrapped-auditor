@@ -145,15 +145,12 @@ The repository includes exploratory analysis and debugging scripts located in `s
 - **`scripts/list_short_discrepancies.ts`**: Scans short plays (30s–60s) for specific discrepancy songs across playback triggers.
 - **`scripts/compare_short_plays.ts` & `scripts/list_short_plays.ts`**: Analyzes short play candidates (< 60s) to evaluate redundancy suppression.
 
-Run compiled diagnostic scripts with `node`:
+Run diagnostic scripts by first compiling with `npm run build`, then executing via `node`:
 ```bash
 npm run build
 node dist/scripts/find_logouts.js
 ```
-Or execute directly with `ts-node`:
-```bash
-npx ts-node-esm scripts/find_logouts.ts
-```
+*(Note: Ensure your `data/` directory contains Spotify JSON export files prior to running diagnostic scripts.)*
 
 For author background and the initial research methodology behind the Wrapped cutoff investigations, see [`about.md`](about.md).
 
